@@ -308,12 +308,13 @@
     doc,
     getDoc,
     setDoc,
-    updateDoc,
     serverTimestamp,
     collection,
     query,
     where,
-    getDocs
+    getDocs,
+    addDoc,
+    updateDoc
   } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
   // 1) Replace this config with your Firebase project's config.
@@ -327,6 +328,7 @@
     messagingSenderId: "222351580051",
     appId: "1:222351580051:web:e5d36c802dae4dabc06666"
 };
+
 
   const hasFirebaseConfig = Object.values(firebaseConfig).every(v => !String(v).startsWith('PASTE_'));
   let app, auth, db;
@@ -349,7 +351,9 @@
     manual: false,
     friendSel: null,
     movies: [],
-    friends: []
+    friends: [],
+    incomingRequests: [],
+    outgoingRequests: []
   };
 
   const $ = (id) => document.getElementById(id);
@@ -393,7 +397,9 @@
     S.user = userDoc.username;
     S.email = firebaseUser.email || userDoc.email || '';
     S.movies = Array.isArray(userDoc.movies) ? userDoc.movies : [];
-    S.friends = Array.isArray(userDoc.friends) ? userDoc.friends : [];
+    S.friends = [];
+    S.incomingRequests = [];
+    S.outgoingRequests = [];
     $('nav-u').textContent = S.user;
     $('screen-auth').classList.remove('active');
     $('screen-main').classList.add('active');
@@ -408,6 +414,8 @@
     S.email = null;
     S.movies = [];
     S.friends = [];
+    S.incomingRequests = [];
+    S.outgoingRequests = [];
     $('screen-main').classList.remove('active');
     $('screen-auth').classList.add('active');
   }
@@ -451,19 +459,19 @@
     }
 
     try {
-  const cred = await createUserWithEmailAndPassword(auth, email, password);
-  await setDoc(doc(db, 'users', cred.user.uid), {
-    username,
-    usernameLower: username.toLowerCase(),
-    email,
-    movies: [],
-    friends: [],
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  });
-} catch (e) {
-  err.textContent = friendlyAuthError(e);
-}
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        username,
+        usernameLower: username.toLowerCase(),
+        email,
+        movies: [],
+        friends: [],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      err.textContent = friendlyAuthError(e);
+    }
   }
   window.auth = authAction;
 
@@ -657,24 +665,144 @@
       return;
     }
     if (S.friends.some(f => f.uid === friend.id)) {
-      err.textContent = 'Already added!';
+      err.textContent = 'You are already friends.';
       return;
     }
-    const friends = [...S.friends, { uid: friend.id, username: friend.username }];
-    await saveCurrentUser({ friends, updatedAt: serverTimestamp() });
-    S.friends = friends;
+    if (S.outgoingRequests.some(r => r.recipientUid === friend.id && r.status === 'pending')) {
+      err.textContent = 'Friend request already sent.';
+      return;
+    }
+    if (S.incomingRequests.some(r => r.senderUid === friend.id && r.status === 'pending')) {
+      err.textContent = 'They already sent you a request — accept it below.';
+      return;
+    }
+
+    await addDoc(collection(db, 'friendRequests'), {
+      senderUid: S.uid,
+      senderUsername: S.user,
+      recipientUid: friend.id,
+      recipientUsername: friend.username,
+      status: 'pending',
+      createdAt: serverTimestamp()
+    });
+
     $('fi').value = '';
+    await refreshSocialData();
     renderFriends();
   }
   window.addFriend = addFriend;
 
+  async function refreshSocialData() {
+    if (!S.uid) return;
+
+    const sentSnap = await getDocs(query(collection(db, 'friendRequests'), where('senderUid', '==', S.uid)));
+    const receivedSnap = await getDocs(query(collection(db, 'friendRequests'), where('recipientUid', '==', S.uid)));
+
+    const outgoing = [];
+    const incoming = [];
+    const friends = [];
+    const seenFriends = new Set();
+
+    sentSnap.forEach(docSnap => {
+      const req = { id: docSnap.id, ...docSnap.data() };
+      if (req.status === 'pending') {
+        outgoing.push(req);
+      } else if (req.status === 'accepted' && !seenFriends.has(req.recipientUid)) {
+        friends.push({ uid: req.recipientUid, username: req.recipientUsername || 'Friend' });
+        seenFriends.add(req.recipientUid);
+      }
+    });
+
+    receivedSnap.forEach(docSnap => {
+      const req = { id: docSnap.id, ...docSnap.data() };
+      if (req.status === 'pending') {
+        incoming.push(req);
+      } else if (req.status === 'accepted' && !seenFriends.has(req.senderUid)) {
+        friends.push({ uid: req.senderUid, username: req.senderUsername || 'Friend' });
+        seenFriends.add(req.senderUid);
+      }
+    });
+
+    outgoing.sort((a, b) => (a.recipientUsername || '').localeCompare(b.recipientUsername || ''));
+    incoming.sort((a, b) => (a.senderUsername || '').localeCompare(b.senderUsername || ''));
+    friends.sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+
+    S.outgoingRequests = outgoing;
+    S.incomingRequests = incoming;
+    S.friends = friends;
+  }
+
+  async function acceptFriendRequest(requestId) {
+    await updateDoc(doc(db, 'friendRequests', requestId), {
+      status: 'accepted',
+      respondedAt: serverTimestamp()
+    });
+    await refreshSocialData();
+    renderFriends();
+  }
+  window.acceptFriendRequest = acceptFriendRequest;
+
+  async function declineFriendRequest(requestId) {
+    await updateDoc(doc(db, 'friendRequests', requestId), {
+      status: 'declined',
+      respondedAt: serverTimestamp()
+    });
+    await refreshSocialData();
+    renderFriends();
+  }
+  window.declineFriendRequest = declineFriendRequest;
+
+  async function cancelFriendRequest(requestId) {
+    await updateDoc(doc(db, 'friendRequests', requestId), {
+      status: 'cancelled',
+      respondedAt: serverTimestamp()
+    });
+    await refreshSocialData();
+    renderFriends();
+  }
+  window.cancelFriendRequest = cancelFriendRequest;
+
   function renderFriends() {
-    $('flist').innerHTML = S.friends.length ? S.friends.map(f => {
+    const friendsHtml = S.friends.length ? S.friends.map(f => {
       return `<div class="friend-card ${S.friendSel === f.uid ? 'active' : ''}" onclick="viewFriend('${f.uid}')">
         <div class="f-avatar">${escapeHtml(f.username.slice(0, 2).toUpperCase())}</div>
         <div><div class="f-name">${escapeHtml(f.username)}</div><div class="f-count">Friend</div></div>
       </div>`;
     }).join('') : '<div class="empty" style="padding:1rem 0;text-align:left;">No friends yet.</div>';
+
+    const incomingHtml = S.incomingRequests.length ? S.incomingRequests.map(r => `
+      <div class="friend-card">
+        <div class="f-avatar">${escapeHtml((r.senderUsername || '?').slice(0, 2).toUpperCase())}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="f-name">${escapeHtml(r.senderUsername || 'Unknown')}</div>
+          <div class="f-count">Sent you a request</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+          <button class="logout-btn" onclick="event.stopPropagation();acceptFriendRequest('${r.id}')">Accept</button>
+          <button class="logout-btn" onclick="event.stopPropagation();declineFriendRequest('${r.id}')">Decline</button>
+        </div>
+      </div>
+    `).join('') : '<div class="empty" style="padding:0.75rem 0;text-align:left;">No incoming requests.</div>';
+
+    const outgoingHtml = S.outgoingRequests.length ? S.outgoingRequests.map(r => `
+      <div class="friend-card">
+        <div class="f-avatar">${escapeHtml((r.recipientUsername || '?').slice(0, 2).toUpperCase())}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="f-name">${escapeHtml(r.recipientUsername || 'Unknown')}</div>
+          <div class="f-count">Pending</div>
+        </div>
+        <button class="logout-btn" onclick="event.stopPropagation();cancelFriendRequest('${r.id}')">Cancel</button>
+      </div>
+    `).join('') : '<div class="empty" style="padding:0.75rem 0;text-align:left;">No outgoing requests.</div>';
+
+    $('flist').innerHTML = `
+      <div class="friends-sidebar-title">Incoming requests</div>
+      ${incomingHtml}
+      <div class="friends-sidebar-title" style="margin-top:1rem;">Outgoing requests</div>
+      ${outgoingHtml}
+      <div class="friends-sidebar-title" style="margin-top:1rem;">Friends</div>
+      ${friendsHtml}
+    `;
   }
 
   async function viewFriend(uid) {
@@ -786,9 +914,13 @@
         }, { merge: true });
         const repaired = await loadCurrentUser(firebaseUser.uid);
         showMain(repaired, firebaseUser);
+        await refreshSocialData();
+        renderFriends();
         return;
       }
       showMain(userDoc, firebaseUser);
+      await refreshSocialData();
+      renderFriends();
     });
   }
 
