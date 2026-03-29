@@ -324,13 +324,13 @@
     getDocs,
     addDoc,
     updateDoc,
-    onSnapshot
+    onSnapshot,
+    deleteDoc,
+    documentId,
+    runTransaction
   } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
-  // 1) Replace this config with your Firebase project's config.
-  // 2) In Firebase console, enable Authentication > Email/Password.
-  // 3) Create a Firestore database in production mode or test mode while developing.
- const firebaseConfig = {
+  const firebaseConfig = {
     apiKey: "AIzaSyAVwjJCvEgyT54FVBDXgS1zFDtZEbeBQ_o",
     authDomain: "cinereels-2657d.firebaseapp.com",
     projectId: "cinereels-2657d",
@@ -355,6 +355,9 @@
     user: null,
     uid: null,
     email: null,
+    firstName: '',
+    lastName: '',
+    displayName: '',
     mode: 'login',
     results: [],
     selected: null,
@@ -367,8 +370,10 @@
   };
 
   let unsubUserDoc = null;
+  let unsubMovies = null;
   let unsubSentRequests = null;
   let unsubReceivedRequests = null;
+  let unsubFriendships = null;
 
   const $ = (id) => document.getElementById(id);
 
@@ -388,23 +393,6 @@
     $('serr').textContent = '';
   }
   window.switchAuthTab = switchAuthTab;
-
-  async function getUserByUsername(username) {
-    const q = query(collection(db, 'users'), where('usernameLower', '==', username.trim().toLowerCase()));
-    const snap = await getDocs(q);
-    return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
-  }
-
-  async function loadCurrentUser(uid) {
-    const snap = await getDoc(doc(db, 'users', uid));
-    if (!snap.exists()) return null;
-    return snap.data();
-  }
-
-  async function saveCurrentUser(partial) {
-    if (!S.uid) return;
-    await setDoc(doc(db, 'users', S.uid), partial, { merge: true });
-  }
 
   function fullNameFrom(docLike) {
     const first = String(docLike?.firstName || '').trim();
@@ -433,6 +421,33 @@
     return String(docLike?.username || '?').slice(0, 2).toUpperCase();
   }
 
+  function friendshipIdFor(a, b) {
+    return [a, b].sort().join('_');
+  }
+
+  async function getUserByUsername(username) {
+    const usernameLower = username.trim().toLowerCase();
+    if (!usernameLower) return null;
+    const usernameSnap = await getDoc(doc(db, 'usernames', usernameLower));
+    if (!usernameSnap.exists()) return null;
+    const { uid } = usernameSnap.data();
+    if (!uid) return null;
+    const userSnap = await getDoc(doc(db, 'users', uid));
+    if (!userSnap.exists()) return null;
+    return { id: uid, ...userSnap.data() };
+  }
+
+  async function loadCurrentUser(uid) {
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (!snap.exists()) return null;
+    return snap.data();
+  }
+
+  async function saveCurrentUser(partial) {
+    if (!S.uid) return;
+    await setDoc(doc(db, 'users', S.uid), partial, { merge: true });
+  }
+
   function showMain(userDoc, firebaseUser) {
     S.uid = firebaseUser.uid;
     S.user = userDoc.username;
@@ -440,7 +455,7 @@
     S.lastName = userDoc.lastName || '';
     S.displayName = primaryNameFrom(userDoc);
     S.email = firebaseUser.email || userDoc.email || '';
-    S.movies = Array.isArray(userDoc.movies) ? userDoc.movies : [];
+    S.movies = [];
     S.friends = [];
     S.incomingRequests = [];
     S.outgoingRequests = [];
@@ -453,60 +468,34 @@
   }
 
   function stopLiveListeners() {
-    if (unsubUserDoc) { unsubUserDoc(); unsubUserDoc = null; }
-    if (unsubSentRequests) { unsubSentRequests(); unsubSentRequests = null; }
-    if (unsubReceivedRequests) { unsubReceivedRequests(); unsubReceivedRequests = null; }
+    [unsubUserDoc, unsubMovies, unsubSentRequests, unsubReceivedRequests, unsubFriendships].forEach(fn => {
+      if (fn) fn();
+    });
+    unsubUserDoc = null;
+    unsubMovies = null;
+    unsubSentRequests = null;
+    unsubReceivedRequests = null;
+    unsubFriendships = null;
   }
 
-  function updateSocialState(sentDocs, receivedDocs) {
-    const outgoing = [];
-    const incoming = [];
-    const friends = [];
-    const seenFriends = new Set();
-
-    sentDocs.forEach(docSnap => {
-      const req = { id: docSnap.id, ...docSnap.data() };
-      if (req.status === 'pending') {
-        outgoing.push(req);
-      } else if (req.status === 'accepted' && !seenFriends.has(req.recipientUid)) {
-        friends.push({
-          requestId: req.id,
-          uid: req.recipientUid,
-          username: req.recipientUsername || 'Friend',
-          firstName: req.recipientFirstName || '',
-          lastName: req.recipientLastName || '',
-          displayName: req.recipientDisplayName || ''
-        });
-        seenFriends.add(req.recipientUid);
-      }
-    });
-
-    receivedDocs.forEach(docSnap => {
-      const req = { id: docSnap.id, ...docSnap.data() };
-      if (req.status === 'pending') {
-        incoming.push(req);
-      } else if (req.status === 'accepted' && !seenFriends.has(req.senderUid)) {
-        friends.push({
-          requestId: req.id,
-          uid: req.senderUid,
-          username: req.senderUsername || 'Friend',
-          firstName: req.senderFirstName || '',
-          lastName: req.senderLastName || '',
-          displayName: req.senderDisplayName || ''
-        });
-        seenFriends.add(req.senderUid);
-      }
-    });
-
-    outgoing.sort((a, b) => (a.recipientUsername || '').localeCompare(b.recipientUsername || ''));
-    incoming.sort((a, b) => (a.senderUsername || '').localeCompare(b.senderUsername || ''));
-    friends.sort((a, b) => primaryNameFrom(a).localeCompare(primaryNameFrom(b)));
-
-    if (S.friendSel && !friends.some(f => f.uid === S.friendSel)) S.friendSel = null;
-
-    S.outgoingRequests = outgoing;
-    S.incomingRequests = incoming;
-    S.friends = friends;
+  async function hydrateFriendships(friendshipDocs) {
+    const out = [];
+    for (const docSnap of friendshipDocs) {
+      const data = docSnap.data();
+      const otherUid = (data.users || []).find(uid => uid !== S.uid);
+      if (!otherUid) continue;
+      const profileSnap = await getDoc(doc(db, 'users', otherUid));
+      if (!profileSnap.exists()) continue;
+      out.push({
+        friendshipId: docSnap.id,
+        uid: otherUid,
+        ...profileSnap.data()
+      });
+    }
+    out.sort((a, b) => primaryNameFrom(a).localeCompare(primaryNameFrom(b)));
+    if (S.friendSel && !out.some(f => f.uid === S.friendSel)) S.friendSel = null;
+    S.friends = out;
+    renderFriends();
   }
 
   function subscribeLiveData() {
@@ -521,50 +510,67 @@
       S.lastName = userDoc.lastName || '';
       S.displayName = primaryNameFrom(userDoc);
       S.email = userDoc.email || S.email || '';
-      S.movies = Array.isArray(userDoc.movies) ? userDoc.movies : [];
       $('nav-u').textContent = navIdentityFrom(userDoc);
+      renderSettings();
+      renderFriends();
+    });
+
+    unsubMovies = onSnapshot(collection(db, 'users', S.uid, 'movies'), (snap) => {
+      S.movies = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.rating - a.rating);
       renderList();
       renderSettings();
     });
 
-    let sentDocs = [];
-    let receivedDocs = [];
-    const pushSocialRender = () => {
-      updateSocialState(sentDocs, receivedDocs);
-      renderFriends();
-    };
-
     unsubSentRequests = onSnapshot(
-      query(collection(db, 'friendRequests'), where('senderUid', '==', S.uid)),
+      query(collection(db, 'friendRequests'), where('senderUid', '==', S.uid), where('status', '==', 'pending')),
       (snap) => {
-        sentDocs = snap.docs;
-        pushSocialRender();
+        S.outgoingRequests = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.recipientUsername || '').localeCompare(b.recipientUsername || ''));
+        renderFriends();
       }
     );
 
     unsubReceivedRequests = onSnapshot(
-      query(collection(db, 'friendRequests'), where('recipientUid', '==', S.uid)),
+      query(collection(db, 'friendRequests'), where('recipientUid', '==', S.uid), where('status', '==', 'pending')),
       (snap) => {
-        receivedDocs = snap.docs;
-        pushSocialRender();
+        S.incomingRequests = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.senderUsername || '').localeCompare(b.senderUsername || ''));
+        renderFriends();
+      }
+    );
+
+    unsubFriendships = onSnapshot(
+      query(collection(db, 'friendships'), where('users', 'array-contains', S.uid)),
+      async (snap) => {
+        await hydrateFriendships(snap.docs);
       }
     );
   }
 
   function showAuth() {
     stopLiveListeners();
-    S.user = null;
-    S.uid = null;
-    S.email = null;
-    S.firstName = '';
-    S.lastName = '';
-    S.displayName = '';
-    S.movies = [];
-    S.friends = [];
-    S.incomingRequests = [];
-    S.outgoingRequests = [];
+    Object.assign(S, {
+      user: null,
+      uid: null,
+      email: null,
+      firstName: '',
+      lastName: '',
+      displayName: '',
+      movies: [],
+      friends: [],
+      incomingRequests: [],
+      outgoingRequests: [],
+      friendSel: null
+    });
     $('screen-main').classList.remove('active');
     $('screen-auth').classList.add('active');
+  }
+
+  async function reserveUsername(usernameLower, uid, username) {
+    const ref = doc(db, 'usernames', usernameLower);
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.exists()) throw new Error('username-taken');
+      tx.set(ref, { uid, username, createdAt: serverTimestamp() });
+    });
   }
 
   async function authAction() {
@@ -607,59 +613,59 @@
       return;
     }
 
+    const usernameLower = username.toLowerCase();
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
+      try {
+        await reserveUsername(usernameLower, cred.user.uid, username);
+      } catch (e) {
+        if (e?.message === 'username-taken') {
+          await signOut(auth);
+          err.textContent = 'Username already taken.';
+          return;
+        }
+        throw e;
+      }
       await setDoc(doc(db, 'users', cred.user.uid), {
         username,
-        usernameLower: username.toLowerCase(),
+        usernameLower,
         firstName,
         lastName,
         displayName: [firstName, lastName].filter(Boolean).join(' '),
         email,
-        movies: [],
-        friends: [],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
     } catch (e) {
       err.textContent = friendlyAuthError(e);
     }
   }
-  window.auth = authAction;
+  window.authAction = authAction;
 
-  function friendlyAuthError(error) {
-    const code = error?.code || '';
-    if (code.includes('invalid-credential')) return 'Incorrect email or password.';
-    if (code.includes('email-already-in-use')) return 'That email is already being used.';
+  function friendlyAuthError(e) {
+    const code = e?.code || '';
+    if (e?.message === 'username-taken') return 'Username already taken.';
+    if (code.includes('email-already')) return 'Email already in use.';
+    if (code.includes('invalid-email')) return 'Invalid email address.';
     if (code.includes('weak-password')) return 'Password should be at least 6 characters.';
-    if (code.includes('invalid-email')) return 'Enter a valid email.';
+    if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return 'Incorrect email or password.';
     if (code.includes('too-many-requests')) return 'Too many attempts. Try again later.';
-    if (code.includes('requires-recent-login')) return 'Sign out and sign back in, then try again.';
     return 'Something went wrong. Try again.';
   }
 
-  async function sendRecovery() {
-    if (!hasFirebaseConfig) return;
-    const email = $('login-email').value.trim();
-    const err = $('aerr');
-    err.textContent = '';
-    if (!email) {
-      err.textContent = 'Enter your email first, then tap Forgot password.';
-      return;
-    }
+  async function showForgot() {
+    const email = prompt('Enter your account email for a password reset:');
+    if (!email) return;
     try {
-      await sendPasswordResetEmail(auth, email);
-      err.style.color = 'var(--green)';
-      err.textContent = 'Password reset email sent.';
-      setTimeout(() => { err.style.color = ''; }, 2500);
+      await sendPasswordResetEmail(auth, email.trim());
+      alert('Password reset email sent.');
     } catch (e) {
-      err.textContent = friendlyAuthError(e);
+      alert(friendlyAuthError(e));
     }
   }
-  window.sendRecovery = sendRecovery;
+  window.showForgot = showForgot;
 
   async function logout() {
-    if (!auth) return;
     await signOut(auth);
   }
   window.logout = logout;
@@ -735,31 +741,24 @@
       const m = S.selected;
       movie = { title: m.Title, year: m.Year, poster: (m.Poster && m.Poster !== 'N/A') ? m.Poster : null };
     }
-    const movies = [...S.movies, { ...movie, rating, id: crypto.randomUUID() }].sort((a, b) => b.rating - a.rating);
-    await saveCurrentUser({ movies, updatedAt: serverTimestamp() });
-    S.movies = movies;
+    await addDoc(collection(db, 'users', S.uid, 'movies'), {
+      ...movie,
+      rating,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
     S.selected = null;
     $('sq').value = '';
     $('sresults').innerHTML = '';
     $('sstatus').textContent = '';
     if (S.manual) { $('mt').value = ''; $('my').value = ''; }
-    renderList();
-    renderSettings();
   }
   window.addMovie = addMovie;
 
   async function delMovie(id) {
-    const movies = S.movies.filter(m => m.id !== id);
-    await saveCurrentUser({ movies, updatedAt: serverTimestamp() });
-    S.movies = movies;
-    renderList();
-    renderSettings();
+    await deleteDoc(doc(db, 'users', S.uid, 'movies', id));
   }
   window.delMovie = delMovie;
-
-  function stars(r) {
-    return '';
-  }
 
   function renderList() {
     const movies = [...S.movies].sort((a, b) => b.rating - a.rating);
@@ -773,8 +772,7 @@
         <div class="banner-info">
           <div class="banner-title">${escapeHtml(m.title)}</div>
           <div class="banner-bottom">
-            <span class="banner-score">${m.rating.toFixed(1)}</span>
-            
+            <span class="banner-score">${Number(m.rating).toFixed(1)}</span>
           </div>
         </div>
       </div>`;
@@ -784,15 +782,14 @@
       const thumb = m.poster
         ? `<div class="movie-thumb"><img src="${m.poster}" onerror="this.parentElement.innerHTML='🎬'" /></div>`
         : `<div class="movie-thumb">🎬</div>`;
-      const s = '';
       return `<div class="movie-row">
         <div class="movie-num">${i + 1}</div>
         ${thumb}
         <div class="movie-info">
-          <div class="movie-name">${escapeHtml(m.title)}${s}</div>
+          <div class="movie-name">${escapeHtml(m.title)}</div>
           <div class="movie-year">${escapeHtml(m.year || '')}</div>
         </div>
-        <div class="score-badge">${m.rating.toFixed(1)}</div>
+        <div class="score-badge">${Number(m.rating).toFixed(1)}</div>
         <button class="del-btn" onclick="delMovie('${m.id}')" title="Remove">✕</button>
       </div>`;
     }).join('') : '<div class="empty">No films yet — add one above!</div>';
@@ -803,7 +800,7 @@
     const err = $('friend-err');
     err.textContent = '';
     if (!username) return;
-    if (username.toLowerCase() === S.user.toLowerCase()) {
+    if (username.toLowerCase() === (S.user || '').toLowerCase()) {
       err.textContent = "That's you!";
       return;
     }
@@ -816,11 +813,11 @@
       err.textContent = 'You are already friends.';
       return;
     }
-    if (S.outgoingRequests.some(r => r.recipientUid === friend.id && r.status === 'pending')) {
+    if (S.outgoingRequests.some(r => r.recipientUid === friend.id)) {
       err.textContent = 'Friend request already sent.';
       return;
     }
-    if (S.incomingRequests.some(r => r.senderUid === friend.id && r.status === 'pending')) {
+    if (S.incomingRequests.some(r => r.senderUid === friend.id)) {
       err.textContent = 'They already sent you a request — accept it below.';
       return;
     }
@@ -837,65 +834,55 @@
       recipientLastName: friend.lastName || '',
       recipientDisplayName: primaryNameFrom(friend),
       status: 'pending',
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
 
     $('fi').value = '';
-    await refreshSocialData();
-    renderFriends();
   }
   window.addFriend = addFriend;
 
-  async function refreshSocialData() {
-    if (!S.uid) return;
-
-    const sentSnap = await getDocs(query(collection(db, 'friendRequests'), where('senderUid', '==', S.uid)));
-    const receivedSnap = await getDocs(query(collection(db, 'friendRequests'), where('recipientUid', '==', S.uid)));
-    updateSocialState(sentSnap.docs, receivedSnap.docs);
-  }
-
   async function acceptFriendRequest(requestId) {
-    await updateDoc(doc(db, 'friendRequests', requestId), {
+    const requestRef = doc(db, 'friendRequests', requestId);
+    const requestSnap = await getDoc(requestRef);
+    if (!requestSnap.exists()) return;
+    const req = requestSnap.data();
+    const friendshipRef = doc(db, 'friendships', friendshipIdFor(req.senderUid, req.recipientUid));
+    await setDoc(friendshipRef, {
+      users: [req.senderUid, req.recipientUid],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    await updateDoc(requestRef, {
       status: 'accepted',
-      respondedAt: serverTimestamp()
+      respondedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
-    await refreshSocialData();
-    renderFriends();
   }
   window.acceptFriendRequest = acceptFriendRequest;
 
   async function declineFriendRequest(requestId) {
     await updateDoc(doc(db, 'friendRequests', requestId), {
       status: 'declined',
-      respondedAt: serverTimestamp()
+      respondedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
-    await refreshSocialData();
-    renderFriends();
   }
   window.declineFriendRequest = declineFriendRequest;
 
   async function cancelFriendRequest(requestId) {
     await updateDoc(doc(db, 'friendRequests', requestId), {
       status: 'cancelled',
-      respondedAt: serverTimestamp()
+      respondedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
-    await refreshSocialData();
-    renderFriends();
   }
   window.cancelFriendRequest = cancelFriendRequest;
 
-  async function removeFriend(requestId) {
-    await updateDoc(doc(db, 'friendRequests', requestId), {
-      status: 'removed',
-      respondedAt: serverTimestamp()
-    });
-    if (S.friendSel && !S.friends.some(f => f.requestId === requestId && f.uid === S.friendSel)) {
+  async function removeFriend(friendshipId) {
+    await deleteDoc(doc(db, 'friendships', friendshipId));
+    if (S.friendSel && !S.friends.some(f => f.friendshipId === friendshipId && f.uid === S.friendSel)) {
       S.friendSel = null;
-    }
-    await refreshSocialData();
-    renderFriends();
-    if (!S.friends.some(f => f.uid === S.friendSel)) {
-      $('fview').innerHTML = '<div class="no-friend">Select a friend to view their list</div>';
     }
   }
   window.removeFriend = removeFriend;
@@ -909,7 +896,7 @@
           <div class="f-name">${escapeHtml(primary)}</div>
           <div class="f-count">@${escapeHtml(f.username || '')}</div>
         </div>
-        <button class="logout-btn" onclick="event.stopPropagation();removeFriend('${f.requestId}')">Remove</button>
+        <button class="logout-btn" onclick="event.stopPropagation();removeFriend('${f.friendshipId}')">Remove</button>
       </div>`;
     }).join('') : '<div class="empty" style="padding:1rem 0;text-align:left;">No friends yet.</div>';
 
@@ -951,24 +938,24 @@
   async function viewFriend(uid) {
     S.friendSel = uid;
     renderFriends();
-    const snap = await getDoc(doc(db, 'users', uid));
-    if (!snap.exists()) {
+    const friendSnap = await getDoc(doc(db, 'users', uid));
+    if (!friendSnap.exists()) {
       $('fview').innerHTML = '<div class="empty">Friend not found.</div>';
       return;
     }
-    const friend = snap.data();
-    const movies = Array.isArray(friend.movies) ? [...friend.movies].sort((a, b) => b.rating - a.rating) : [];
+    const friend = friendSnap.data();
+    const moviesSnap = await getDocs(collection(db, 'users', uid, 'movies'));
+    const movies = moviesSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.rating - a.rating);
     const top = movies.slice(0, 3);
     const topHtml = top.length ? `<div class="top3" style="margin-bottom:1.5rem;">${top.map((m, i) => {
       const img = m.poster
         ? `<img class="banner-img" src="${m.poster}" onerror="this.outerHTML='<div class=banner-placeholder>🎬</div>'" />`
         : `<div class="banner-placeholder">🎬</div>`;
-      return `<div class="banner-card">${img}<div class="banner-rank">#${i + 1}</div><div class="banner-info"><div class="banner-title">${escapeHtml(m.title)}</div><div class="banner-bottom"><span class="banner-score">${m.rating.toFixed(1)}</span></div></div></div>`;
+      return `<div class="banner-card">${img}<div class="banner-rank">#${i + 1}</div><div class="banner-info"><div class="banner-title">${escapeHtml(m.title)}</div><div class="banner-bottom"><span class="banner-score">${Number(m.rating).toFixed(1)}</span></div></div></div>`;
     }).join('')}</div>` : '';
     const listHtml = movies.length ? `<div class="movie-list">${movies.map((m, i) => {
       const thumb = m.poster ? `<div class="movie-thumb"><img src="${m.poster}" onerror="this.parentElement.innerHTML='🎬'" /></div>` : `<div class="movie-thumb">🎬</div>`;
-      const s = '';
-      return `<div class="movie-row"><div class="movie-num">${i + 1}</div>${thumb}<div class="movie-info"><div class="movie-name">${escapeHtml(m.title)}${s}</div><div class="movie-year">${escapeHtml(m.year || '')}</div></div><div class="score-badge">${m.rating.toFixed(1)}</div></div>`;
+      return `<div class="movie-row"><div class="movie-num">${i + 1}</div>${thumb}<div class="movie-info"><div class="movie-name">${escapeHtml(m.title)}</div><div class="movie-year">${escapeHtml(m.year || '')}</div></div><div class="score-badge">${Number(m.rating).toFixed(1)}</div></div>`;
     }).join('')}</div>` : '<div class="empty">No films rated yet.</div>';
     const friendPrimary = primaryNameFrom(friend);
     const friendSecondary = friend.username ? ` <span style="font-size:12px;color:var(--muted);font-weight:400;">@${escapeHtml(friend.username)}</span>` : '';
@@ -1055,11 +1042,9 @@
   window.closeModal = closeModal;
 
   async function confirmReset() {
-    await saveCurrentUser({ movies: [], updatedAt: serverTimestamp() });
-    S.movies = [];
+    const snap = await getDocs(collection(db, 'users', S.uid, 'movies'));
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
     closeModal();
-    renderList();
-    renderSettings();
   }
   window.confirmReset = confirmReset;
 
@@ -1078,24 +1063,26 @@
         showAuth();
         return;
       }
-      const userDoc = await loadCurrentUser(firebaseUser.uid);
+      let userDoc = await loadCurrentUser(firebaseUser.uid);
       if (!userDoc) {
+        const username = firebaseUser.email?.split('@')[0] || 'user';
+        const usernameLower = username.toLowerCase();
+        const usernameRef = doc(db, 'usernames', usernameLower);
+        const existingUsername = await getDoc(usernameRef);
+        if (!existingUsername.exists()) {
+          await setDoc(usernameRef, { uid: firebaseUser.uid, username, createdAt: serverTimestamp() }, { merge: true });
+        }
         await setDoc(doc(db, 'users', firebaseUser.uid), {
-          username: firebaseUser.email?.split('@')[0] || 'user',
-          usernameLower: (firebaseUser.email?.split('@')[0] || 'user').toLowerCase(),
+          username,
+          usernameLower,
           firstName: '',
           lastName: '',
           displayName: '',
           email: firebaseUser.email || '',
-          movies: [],
-          friends: [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         }, { merge: true });
-        const repaired = await loadCurrentUser(firebaseUser.uid);
-        showMain(repaired, firebaseUser);
-        subscribeLiveData();
-        return;
+        userDoc = await loadCurrentUser(firebaseUser.uid);
       }
       showMain(userDoc, firebaseUser);
       subscribeLiveData();
