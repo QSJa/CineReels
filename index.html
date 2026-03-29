@@ -314,7 +314,8 @@
     where,
     getDocs,
     addDoc,
-    updateDoc
+    updateDoc,
+    onSnapshot
   } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
   // 1) Replace this config with your Firebase project's config.
@@ -328,7 +329,6 @@
     messagingSenderId: "222351580051",
     appId: "1:222351580051:web:e5d36c802dae4dabc06666"
 };
-
 
   const hasFirebaseConfig = Object.values(firebaseConfig).every(v => !String(v).startsWith('PASTE_'));
   let app, auth, db;
@@ -355,6 +355,10 @@
     incomingRequests: [],
     outgoingRequests: []
   };
+
+  let unsubUserDoc = null;
+  let unsubSentRequests = null;
+  let unsubReceivedRequests = null;
 
   const $ = (id) => document.getElementById(id);
 
@@ -408,7 +412,88 @@
     renderSettings();
   }
 
+  function stopLiveListeners() {
+    if (unsubUserDoc) { unsubUserDoc(); unsubUserDoc = null; }
+    if (unsubSentRequests) { unsubSentRequests(); unsubSentRequests = null; }
+    if (unsubReceivedRequests) { unsubReceivedRequests(); unsubReceivedRequests = null; }
+  }
+
+  function updateSocialState(sentDocs, receivedDocs) {
+    const outgoing = [];
+    const incoming = [];
+    const friends = [];
+    const seenFriends = new Set();
+
+    sentDocs.forEach(docSnap => {
+      const req = { id: docSnap.id, ...docSnap.data() };
+      if (req.status === 'pending') {
+        outgoing.push(req);
+      } else if (req.status === 'accepted' && !seenFriends.has(req.recipientUid)) {
+        friends.push({ uid: req.recipientUid, username: req.recipientUsername || 'Friend' });
+        seenFriends.add(req.recipientUid);
+      }
+    });
+
+    receivedDocs.forEach(docSnap => {
+      const req = { id: docSnap.id, ...docSnap.data() };
+      if (req.status === 'pending') {
+        incoming.push(req);
+      } else if (req.status === 'accepted' && !seenFriends.has(req.senderUid)) {
+        friends.push({ uid: req.senderUid, username: req.senderUsername || 'Friend' });
+        seenFriends.add(req.senderUid);
+      }
+    });
+
+    outgoing.sort((a, b) => (a.recipientUsername || '').localeCompare(b.recipientUsername || ''));
+    incoming.sort((a, b) => (a.senderUsername || '').localeCompare(b.senderUsername || ''));
+    friends.sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+
+    S.outgoingRequests = outgoing;
+    S.incomingRequests = incoming;
+    S.friends = friends;
+  }
+
+  function subscribeLiveData() {
+    stopLiveListeners();
+    if (!S.uid || !db) return;
+
+    unsubUserDoc = onSnapshot(doc(db, 'users', S.uid), (snap) => {
+      if (!snap.exists()) return;
+      const userDoc = snap.data();
+      S.user = userDoc.username || S.user;
+      S.email = userDoc.email || S.email || '';
+      S.movies = Array.isArray(userDoc.movies) ? userDoc.movies : [];
+      $('nav-u').textContent = S.user;
+      renderList();
+      renderSettings();
+    });
+
+    let sentDocs = [];
+    let receivedDocs = [];
+    const pushSocialRender = () => {
+      updateSocialState(sentDocs, receivedDocs);
+      renderFriends();
+    };
+
+    unsubSentRequests = onSnapshot(
+      query(collection(db, 'friendRequests'), where('senderUid', '==', S.uid)),
+      (snap) => {
+        sentDocs = snap.docs;
+        pushSocialRender();
+      }
+    );
+
+    unsubReceivedRequests = onSnapshot(
+      query(collection(db, 'friendRequests'), where('recipientUid', '==', S.uid)),
+      (snap) => {
+        receivedDocs = snap.docs;
+        pushSocialRender();
+      }
+    );
+  }
+
   function showAuth() {
+    stopLiveListeners();
     S.user = null;
     S.uid = null;
     S.email = null;
@@ -606,11 +691,7 @@
   window.delMovie = delMovie;
 
   function stars(r) {
-    if (r >= 9) return '⭐⭐⭐⭐⭐';
-    if (r >= 8) return '⭐⭐⭐⭐';
-    if (r >= 6.5) return '⭐⭐⭐';
-    if (r >= 5) return '⭐⭐';
-    return '⭐';
+    return '';
   }
 
   function renderList() {
@@ -626,7 +707,7 @@
           <div class="banner-title">${escapeHtml(m.title)}</div>
           <div class="banner-bottom">
             <span class="banner-score">${m.rating.toFixed(1)}</span>
-            <span class="banner-stars">${stars(m.rating)}</span>
+            
           </div>
         </div>
       </div>`;
@@ -636,7 +717,7 @@
       const thumb = m.poster
         ? `<div class="movie-thumb"><img src="${m.poster}" onerror="this.parentElement.innerHTML='🎬'" /></div>`
         : `<div class="movie-thumb">🎬</div>`;
-      const s = i < 3 ? `<span style="font-size:11px;margin-left:6px;">${stars(m.rating)}</span>` : '';
+      const s = '';
       return `<div class="movie-row">
         <div class="movie-num">${i + 1}</div>
         ${thumb}
@@ -697,39 +778,7 @@
 
     const sentSnap = await getDocs(query(collection(db, 'friendRequests'), where('senderUid', '==', S.uid)));
     const receivedSnap = await getDocs(query(collection(db, 'friendRequests'), where('recipientUid', '==', S.uid)));
-
-    const outgoing = [];
-    const incoming = [];
-    const friends = [];
-    const seenFriends = new Set();
-
-    sentSnap.forEach(docSnap => {
-      const req = { id: docSnap.id, ...docSnap.data() };
-      if (req.status === 'pending') {
-        outgoing.push(req);
-      } else if (req.status === 'accepted' && !seenFriends.has(req.recipientUid)) {
-        friends.push({ uid: req.recipientUid, username: req.recipientUsername || 'Friend' });
-        seenFriends.add(req.recipientUid);
-      }
-    });
-
-    receivedSnap.forEach(docSnap => {
-      const req = { id: docSnap.id, ...docSnap.data() };
-      if (req.status === 'pending') {
-        incoming.push(req);
-      } else if (req.status === 'accepted' && !seenFriends.has(req.senderUid)) {
-        friends.push({ uid: req.senderUid, username: req.senderUsername || 'Friend' });
-        seenFriends.add(req.senderUid);
-      }
-    });
-
-    outgoing.sort((a, b) => (a.recipientUsername || '').localeCompare(b.recipientUsername || ''));
-    incoming.sort((a, b) => (a.senderUsername || '').localeCompare(b.senderUsername || ''));
-    friends.sort((a, b) => (a.username || '').localeCompare(b.username || ''));
-
-    S.outgoingRequests = outgoing;
-    S.incomingRequests = incoming;
-    S.friends = friends;
+    updateSocialState(sentSnap.docs, receivedSnap.docs);
   }
 
   async function acceptFriendRequest(requestId) {
@@ -820,11 +869,11 @@
       const img = m.poster
         ? `<img class="banner-img" src="${m.poster}" onerror="this.outerHTML='<div class=banner-placeholder>🎬</div>'" />`
         : `<div class="banner-placeholder">🎬</div>`;
-      return `<div class="banner-card">${img}<div class="banner-rank">#${i + 1}</div><div class="banner-info"><div class="banner-title">${escapeHtml(m.title)}</div><div class="banner-bottom"><span class="banner-score">${m.rating.toFixed(1)}</span><span class="banner-stars">${stars(m.rating)}</span></div></div></div>`;
+      return `<div class="banner-card">${img}<div class="banner-rank">#${i + 1}</div><div class="banner-info"><div class="banner-title">${escapeHtml(m.title)}</div><div class="banner-bottom"><span class="banner-score">${m.rating.toFixed(1)}</span></div></div></div>`;
     }).join('')}</div>` : '';
     const listHtml = movies.length ? `<div class="movie-list">${movies.map((m, i) => {
       const thumb = m.poster ? `<div class="movie-thumb"><img src="${m.poster}" onerror="this.parentElement.innerHTML='🎬'" /></div>` : `<div class="movie-thumb">🎬</div>`;
-      const s = i < 3 ? `<span style="font-size:11px;margin-left:6px;">${stars(m.rating)}</span>` : '';
+      const s = '';
       return `<div class="movie-row"><div class="movie-num">${i + 1}</div>${thumb}<div class="movie-info"><div class="movie-name">${escapeHtml(m.title)}${s}</div><div class="movie-year">${escapeHtml(m.year || '')}</div></div><div class="score-badge">${m.rating.toFixed(1)}</div></div>`;
     }).join('')}</div>` : '<div class="empty">No films rated yet.</div>';
     $('fview').innerHTML = `<div class="section-title">${escapeHtml(friend.username)}'s list</div>${topHtml}${listHtml}`;
@@ -914,13 +963,11 @@
         }, { merge: true });
         const repaired = await loadCurrentUser(firebaseUser.uid);
         showMain(repaired, firebaseUser);
-        await refreshSocialData();
-        renderFriends();
+        subscribeLiveData();
         return;
       }
       showMain(userDoc, firebaseUser);
-      await refreshSocialData();
-      renderFriends();
+      subscribeLiveData();
     });
   }
 
