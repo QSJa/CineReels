@@ -593,54 +593,58 @@
     }
 
     const firstName = $('signup-first-name').value.trim();
-    const lastName = $('signup-last-name').value.trim();
-    const username = $('signup-username').value.trim();
-    const email = $('signup-email').value.trim();
-    const password = $('signup-password').value;
-    const err = $('serr');
-    err.textContent = '';
+const lastName = $('signup-last-name').value.trim();
+const username = $('signup-username').value.trim();
+const email = $('signup-email').value.trim();
+const password = $('signup-password').value;
+const err = $('serr');
+err.textContent = '';
 
-    if (!firstName || !lastName || !username || !email || !password) {
-      err.textContent = 'Fill in all fields.';
-      return;
-    }
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      err.textContent = 'Enter a valid email.';
-      return;
-    }
-    if (username.length < 3) {
-      err.textContent = 'Username must be at least 3 characters.';
-      return;
-    }
+if (!firstName || !lastName || !username || !email || !password) {
+  err.textContent = 'Fill in all fields.';
+  return;
+}
+if (!/^\S+@\S+\.\S+$/.test(email)) {
+  err.textContent = 'Enter a valid email.';
+  return;
+}
 
-    const usernameLower = username.toLowerCase();
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      try {
-        await reserveUsername(usernameLower, cred.user.uid, username);
-      } catch (e) {
-        if (e?.message === 'username-taken') {
-          await signOut(auth);
-          err.textContent = 'Username already taken.';
-          return;
-        }
-        throw e;
-      }
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        username,
-        usernameLower,
-        firstName,
-        lastName,
-        displayName: [firstName, lastName].filter(Boolean).join(' '),
-        email,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-    } catch (e) {
-      err.textContent = friendlyAuthError(e);
+const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+
+if (!usernameRegex.test(username)) {
+  err.textContent =
+    'Username must be 3–20 characters and only contain letters, numbers, or underscores.';
+  return;
+}
+
+const usernameLower = username.toLowerCase();
+try {
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  try {
+    await reserveUsername(usernameLower, cred.user.uid, username);
+  } catch (e) {
+    if (e?.message === 'username-taken') {
+      await signOut(auth);
+      err.textContent = 'Username already taken.';
+      return;
     }
+    throw e;
   }
-  window.authAction = authAction;
+  await setDoc(doc(db, 'users', cred.user.uid), {
+    username,
+    usernameLower,
+    firstName,
+    lastName,
+    displayName: [firstName, lastName].filter(Boolean).join(' '),
+    email,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+} catch (e) {
+  err.textContent = friendlyAuthError(e);
+}
+}
+window.authAction = authAction;
 
   function friendlyAuthError(e) {
     const code = e?.code || '';
