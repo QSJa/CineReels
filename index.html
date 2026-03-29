@@ -100,7 +100,7 @@
   .friends-sidebar-title { font-size: 15px; font-weight: 600; margin-bottom: 0.75rem; }
   .friend-card { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; cursor: pointer; margin-bottom: 6px; transition: border-color 0.15s; }
   .friend-card:hover, .friend-card.active { border-color: var(--accent); }
-  .f-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #111; flex-shrink: 0; }
+  .f-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent2)); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #111; flex-shrink: 0; letter-spacing: 0.5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
   .f-name { font-size: 13px; font-weight: 500; }
   .f-count { font-size: 11px; color: var(--muted); }
   .add-friend-row { display: flex; gap: 6px; margin-top: 8px; }
@@ -330,7 +330,7 @@
   // 1) Replace this config with your Firebase project's config.
   // 2) In Firebase console, enable Authentication > Email/Password.
   // 3) Create a Firestore database in production mode or test mode while developing.
-  const firebaseConfig = {
+ const firebaseConfig = {
     apiKey: "AIzaSyAVwjJCvEgyT54FVBDXgS1zFDtZEbeBQ_o",
     authDomain: "cinereels-2657d.firebaseapp.com",
     projectId: "cinereels-2657d",
@@ -416,6 +416,14 @@
     return fullNameFrom(docLike) || docLike?.username || 'User';
   }
 
+  function navIdentityFrom(docLike) {
+    const full = fullNameFrom(docLike);
+    const username = String(docLike?.username || '').trim();
+    if (full && username) return `${full} (${username})`;
+    if (username) return `(${username})`;
+    return full || 'User';
+  }
+
   function initialsFrom(docLike) {
     const full = fullNameFrom(docLike);
     if (full) {
@@ -436,7 +444,7 @@
     S.friends = [];
     S.incomingRequests = [];
     S.outgoingRequests = [];
-    $('nav-u').textContent = S.user;
+    $('nav-u').textContent = navIdentityFrom(userDoc);
     $('screen-auth').classList.remove('active');
     $('screen-main').classList.add('active');
     renderList();
@@ -514,7 +522,7 @@
       S.displayName = primaryNameFrom(userDoc);
       S.email = userDoc.email || S.email || '';
       S.movies = Array.isArray(userDoc.movies) ? userDoc.movies : [];
-      $('nav-u').textContent = S.user;
+      $('nav-u').textContent = navIdentityFrom(userDoc);
       renderList();
       renderSettings();
     });
