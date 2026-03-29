@@ -451,24 +451,19 @@
     }
 
     try {
-      const existing = await getUserByUsername(username);
-      if (existing) {
-        err.textContent = 'Username already taken.';
-        return;
-      }
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        username,
-        usernameLower: username.toLowerCase(),
-        email,
-        movies: [],
-        friends: [],
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-    } catch (e) {
-      err.textContent = friendlyAuthError(e);
-    }
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  await setDoc(doc(db, 'users', cred.user.uid), {
+    username,
+    usernameLower: username.toLowerCase(),
+    email,
+    movies: [],
+    friends: [],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+} catch (e) {
+  err.textContent = friendlyAuthError(e);
+}
   }
   window.auth = authAction;
 
