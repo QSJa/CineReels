@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>CineReels</title>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -17,8 +16,6 @@
   #app { max-width: 860px; margin: 0 auto; padding: 0 1rem 4rem; }
   .screen { display: none; }
   .screen.active { display: block; }
-
-  /* AUTH */
   .auth-wrap { max-width: 360px; margin: 4rem auto; }
   .logo { font-size: 26px; font-weight: 700; letter-spacing: 2px; color: var(--accent); margin-bottom: 0.4rem; }
   .logo span { color: var(--muted); font-weight: 400; }
@@ -41,9 +38,7 @@
   .success-msg { color: var(--green); font-size: 12px; margin-top: 0.5rem; min-height: 18px; }
   .link-btn { background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 0.75rem; display: block; text-align: center; }
   .link-btn:hover { color: var(--text); }
-
-  /* NAV */
-  .nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+  .nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 2rem; gap: 1rem; }
   .nav-logo { font-size: 18px; font-weight: 700; letter-spacing: 2px; color: var(--accent); }
   .nav-links { display: flex; gap: 4px; }
   .nav-link { background: none; border: none; color: var(--muted); font-size: 13px; cursor: pointer; padding: 7px 14px; border-radius: 7px; transition: all 0.15s; }
@@ -51,12 +46,8 @@
   .nav-user { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
   .logout-btn { background: none; border: 1px solid var(--border2); color: var(--muted); font-size: 11px; cursor: pointer; padding: 5px 12px; border-radius: 6px; transition: all 0.15s; }
   .logout-btn:hover { color: var(--text); border-color: var(--text); }
-
-  /* TABS */
   .tab-content { display: none; }
   .tab-content.active { display: block; }
-
-  /* ADD BOX */
   .add-box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; margin-bottom: 2rem; }
   .add-box-title { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
   .search-bar { display: flex; gap: 8px; margin-bottom: 0.5rem; }
@@ -82,8 +73,6 @@
   .rating-num { font-size: 20px; font-weight: 600; color: var(--accent); min-width: 40px; }
   .add-btn { background: var(--accent); color: #111; border: none; border-radius: 8px; padding: 10px 22px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
   .add-btn:hover { background: var(--accent2); }
-
-  /* TOP 3 */
   .section-title { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
   .top3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 2.5rem; }
   .banner-card { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); position: relative; background: var(--surface); }
@@ -95,8 +84,6 @@
   .banner-bottom { display: flex; align-items: center; justify-content: space-between; }
   .banner-score { font-size: 22px; font-weight: 700; color: var(--accent); line-height: 1; }
   .banner-stars { font-size: 11px; }
-
-  /* MOVIE LIST */
   .movie-list { display: flex; flex-direction: column; gap: 8px; }
   .movie-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; transition: border-color 0.15s; }
   .movie-row:hover { border-color: var(--border2); }
@@ -109,8 +96,6 @@
   .score-badge { background: var(--accent); color: #111; border-radius: 7px; padding: 4px 10px; font-size: 14px; font-weight: 700; flex-shrink: 0; }
   .del-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; flex-shrink: 0; padding: 4px 6px; border-radius: 5px; transition: all 0.15s; }
   .del-btn:hover { color: var(--red); background: rgba(224,82,82,0.1); }
-
-  /* FRIENDS */
   .friends-grid { display: grid; grid-template-columns: 220px 1fr; gap: 1.5rem; }
   .friends-sidebar-title { font-size: 15px; font-weight: 600; margin-bottom: 0.75rem; }
   .friend-card { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; cursor: pointer; margin-bottom: 6px; transition: border-color 0.15s; }
@@ -126,11 +111,9 @@
   .hint { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
   .empty { text-align: center; color: var(--muted); font-size: 13px; padding: 2.5rem 0; }
   .no-friend { color: var(--muted); font-size: 14px; text-align: center; margin-top: 4rem; }
-
-  /* SETTINGS */
   .settings-wrap { max-width: 520px; }
   .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; margin-bottom: 1.25rem; }
-  .settings-card-title { font-size: 14px; font-weight: 600; margin-bottom: 1.25rem; color: var(--accent); letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px; }
+  .settings-card-title { font-weight: 600; margin-bottom: 1.25rem; color: var(--accent); letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px; }
   .info-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
   .info-row:last-child { border-bottom: none; padding-bottom: 0; }
   .info-label { font-size: 13px; color: var(--muted); }
@@ -142,8 +125,6 @@
   .btn-save:hover { background: var(--accent2); }
   .btn-danger { background: none; border: 1px solid var(--red); color: var(--red); border-radius: 8px; padding: 10px 22px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
   .btn-danger:hover { background: rgba(224,82,82,0.1); }
-
-  /* MODAL */
   .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
   .modal-backdrop.open { display: flex; }
   .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; padding: 2rem; width: 100%; max-width: 360px; margin: 1rem; }
@@ -154,17 +135,16 @@
   .btn-cancel:hover { color: var(--text); }
   .btn-confirm-danger { background: var(--red); color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
   .btn-confirm-danger:hover { opacity: 0.85; }
-
+  .tiny-note { font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 0.5rem; }
   @media (max-width: 600px) {
     .top3 { grid-template-columns: repeat(2,1fr); }
     .friends-grid { grid-template-columns: 1fr; }
+    .nav { flex-wrap: wrap; }
   }
 </style>
 </head>
 <body>
 <div id="app">
-
-  <!-- RESET CONFIRM MODAL -->
   <div class="modal-backdrop" id="reset-modal">
     <div class="modal">
       <h3>Reset your list?</h3>
@@ -176,7 +156,6 @@
     </div>
   </div>
 
-  <!-- AUTH SCREEN -->
   <div id="screen-auth" class="screen active">
     <div class="auth-wrap">
       <div class="logo">CINE<span>REELS</span></div>
@@ -186,47 +165,35 @@
         <div class="auth-tab" onclick="switchAuthTab('signup')">Create account</div>
       </div>
 
-      <!-- Login form -->
       <div id="login-form">
-        <div class="field"><label>Username</label><input id="au" type="text" placeholder="e.g. filmfan42" /></div>
+        <div class="field"><label>Email</label><input id="login-email" type="email" placeholder="you@email.com" /></div>
         <div class="field"><label>Password</label>
           <div class="pw-wrap">
-            <input id="ap" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')auth()" />
-            <button class="pw-eye" type="button" onclick="toggleEye('ap',this)">👁</button>
+            <input id="login-password" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')auth()" />
+            <button class="pw-eye" type="button" onclick="toggleEye('login-password',this)">👁</button>
           </div>
         </div>
         <div class="err" id="aerr"></div>
-        <button class="btn-primary" id="auth-btn" onclick="auth()">Sign in</button>
-        <button class="link-btn" onclick="showForgot()">Forgot password?</button>
+        <button class="btn-primary" onclick="auth()">Sign in</button>
+        <button class="link-btn" onclick="sendRecovery()">Forgot password?</button>
       </div>
 
-      <!-- Signup form -->
       <div id="signup-form" style="display:none;">
-        <div class="field"><label>Username</label><input id="su" type="text" placeholder="e.g. filmfan42" /></div>
-        <div class="field"><label>Email</label><input id="se" type="email" placeholder="you@email.com" /></div>
+        <div class="field"><label>Username</label><input id="signup-username" type="text" placeholder="e.g. filmfan42" /></div>
+        <div class="field"><label>Email</label><input id="signup-email" type="email" placeholder="you@email.com" /></div>
         <div class="field"><label>Password</label>
           <div class="pw-wrap">
-            <input id="sp" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')auth()" />
-            <button class="pw-eye" type="button" onclick="toggleEye('sp',this)">👁</button>
+            <input id="signup-password" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')auth()" />
+            <button class="pw-eye" type="button" onclick="toggleEye('signup-password',this)">👁</button>
           </div>
         </div>
         <div class="err" id="serr"></div>
         <button class="btn-primary" onclick="auth()">Create account</button>
-      </div>
-
-      <!-- Forgot password form -->
-      <div id="forgot-form" style="display:none;">
-        <div class="field"><label>Username</label><input id="fu" type="text" placeholder="Your username" /></div>
-        <div class="field"><label>Email on your account</label><input id="fe" type="email" placeholder="you@email.com" /></div>
-        <div class="err" id="ferr2"></div>
-        <div class="success-msg" id="fsuccess"></div>
-        <button class="btn-primary" id="forgot-btn" onclick="sendRecovery()">Send recovery email</button>
-        <button class="link-btn" onclick="showLogin()">Back to sign in</button>
+        <div class="tiny-note">Usernames are public and unique. Emails and passwords are handled by Firebase Auth.</div>
       </div>
     </div>
   </div>
 
-  <!-- MAIN SCREEN -->
   <div id="screen-main" class="screen">
     <div class="nav">
       <div class="nav-logo">CINEREELS</div>
@@ -241,7 +208,6 @@
       </div>
     </div>
 
-    <!-- MY LIST TAB -->
     <div id="tab-mylist" class="tab-content active">
       <div class="add-box">
         <div class="add-box-title">Add a movie</div>
@@ -273,7 +239,6 @@
       <div class="movie-list" id="mlist"></div>
     </div>
 
-    <!-- FRIENDS TAB -->
     <div id="tab-friends" class="tab-content">
       <div class="friends-grid">
         <div>
@@ -284,43 +249,23 @@
             <button onclick="addFriend()">Add</button>
           </div>
           <div class="err" id="friend-err"></div>
-          <div class="hint">Friends must have an account in the same browser.</div>
+          <div class="hint">Friends now work across devices because they are stored in Firestore.</div>
         </div>
         <div id="fview"><div class="no-friend">Select a friend to view their list</div></div>
       </div>
     </div>
 
-    <!-- SETTINGS TAB -->
     <div id="tab-settings" class="tab-content">
       <div class="settings-wrap">
         <div class="section-title">Settings</div>
-
-        <!-- Account info -->
         <div class="settings-card">
           <div class="settings-card-title">Account info</div>
-          <div class="info-row">
-            <span class="info-label">Username</span>
-            <span class="info-value" id="s-username">—</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Email</span>
-            <span class="info-value" id="s-email">—</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Movies rated</span>
-            <span class="info-value" id="s-count">—</span>
-          </div>
+          <div class="info-row"><span class="info-label">Username</span><span class="info-value" id="s-username">—</span></div>
+          <div class="info-row"><span class="info-label">Email</span><span class="info-value" id="s-email">—</span></div>
+          <div class="info-row"><span class="info-label">Movies rated</span><span class="info-value" id="s-count">—</span></div>
         </div>
-
-        <!-- Change password -->
         <div class="settings-card">
           <div class="settings-card-title">Change password</div>
-          <div class="settings-field"><label>Current password</label>
-            <div class="pw-wrap">
-              <input id="s-cur-pw" type="password" placeholder="••••••••" />
-              <button class="pw-eye" type="button" onclick="toggleEye('s-cur-pw',this)">👁</button>
-            </div>
-          </div>
           <div class="settings-field"><label>New password</label>
             <div class="pw-wrap">
               <input id="s-new-pw" type="password" placeholder="••••••••" />
@@ -337,8 +282,6 @@
           <div class="success-msg" id="pw-success"></div>
           <button class="btn-save" onclick="changePassword()">Update password</button>
         </div>
-
-        <!-- Danger zone -->
         <div class="settings-card">
           <div class="settings-card-title" style="color:var(--red);">Danger zone</div>
           <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;line-height:1.6;">This will permanently delete all your rated movies. Your account and friends list will remain.</p>
@@ -349,221 +292,335 @@
   </div>
 </div>
 
-<script>
-  emailjs.init('E4_vN8R36QfPS_Mut');
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    sendPasswordResetEmail,
+    signOut,
+    onAuthStateChanged,
+    updatePassword
+  } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+  import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    updateDoc,
+    serverTimestamp,
+    collection,
+    query,
+    where,
+    getDocs
+  } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
-  let S = { user: null, mode: 'login', results: [], selected: null, manual: false, friendSel: null };
+  // 1) Replace this config with your Firebase project's config.
+  // 2) In Firebase console, enable Authentication > Email/Password.
+  // 3) Create a Firestore database in production mode or test mode while developing.
+  const firebaseConfig = {
+    apiKey: "AIzaSyAVwjJCvEgyT54FVBDXgS1zFDtZEbeBQ_o",
+    authDomain: "cinereels-2657d.firebaseapp.com",
+    projectId: "cinereels-2657d",
+    storageBucket: "cinereels-2657d.firebasestorage.app",
+    messagingSenderId: "222351580051",
+    appId: "1:222351580051:web:e5d36c802dae4dabc06666"
+};
 
-  const DB = {
-    get()         { try { return JSON.parse(localStorage.getItem('cr4') || '{"u":{},"p":{},"e":{},"f":{}}'); } catch(e) { return {u:{},p:{},e:{},f:{}}; } },
-    save(d)       { try { localStorage.setItem('cr4', JSON.stringify(d)); } catch(e) {} },
-    movies(u)     { return this.get().u[u] || []; },
-    saveMovies(u,m){ const d=this.get(); d.u[u]=m; this.save(d); },
-    friends(u)    { return this.get().f[u] || []; },
-    saveFriends(u,f){ const d=this.get(); d.f[u]=f; this.save(d); },
-    email(u)      { return this.get().e[u] || ''; },
-    exists(u)     { return this.get().u.hasOwnProperty(u); },
-    checkPw(u,p)  { return this.get().p[u] === p; },
-    setPw(u,p)    { const d=this.get(); d.p[u]=p; this.save(d); }
+  const hasFirebaseConfig = Object.values(firebaseConfig).every(v => !String(v).startsWith('PASTE_'));
+  let app, auth, db;
+
+  if (hasFirebaseConfig) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  } else {
+    document.getElementById('aerr').textContent = 'Add your Firebase config at the bottom of this file first.';
+  }
+
+  const S = {
+    user: null,
+    uid: null,
+    email: null,
+    mode: 'login',
+    results: [],
+    selected: null,
+    manual: false,
+    friendSel: null,
+    movies: [],
+    friends: []
   };
 
+  const $ = (id) => document.getElementById(id);
+
   function toggleEye(inputId, btn) {
-    const input = document.getElementById(inputId);
+    const input = $(inputId);
     if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
     else { input.type = 'password'; btn.textContent = '👁'; }
   }
+  window.toggleEye = toggleEye;
 
   function switchAuthTab(m) {
     S.mode = m;
-    document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (m==='login'?0:1)===i));
-    document.getElementById('login-form').style.display  = m==='login'  ? 'block' : 'none';
-    document.getElementById('signup-form').style.display = m==='signup' ? 'block' : 'none';
-    document.getElementById('forgot-form').style.display = 'none';
-    document.getElementById('aerr').textContent = '';
-    document.getElementById('serr').textContent = '';
+    document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (m === 'login' ? 0 : 1) === i));
+    $('login-form').style.display = m === 'login' ? 'block' : 'none';
+    $('signup-form').style.display = m === 'signup' ? 'block' : 'none';
+    $('aerr').textContent = '';
+    $('serr').textContent = '';
+  }
+  window.switchAuthTab = switchAuthTab;
+
+  async function getUserByUsername(username) {
+    const q = query(collection(db, 'users'), where('usernameLower', '==', username.trim().toLowerCase()));
+    const snap = await getDocs(q);
+    return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
   }
 
-  function showForgot() {
-    document.getElementById('login-form').style.display = 'none';
-    document.getElementById('forgot-form').style.display = 'block';
-    document.getElementById('ferr2').textContent = '';
-    document.getElementById('fsuccess').textContent = '';
+  async function loadCurrentUser(uid) {
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (!snap.exists()) return null;
+    return snap.data();
   }
 
-  function showLogin() {
-    document.getElementById('forgot-form').style.display = 'none';
-    document.getElementById('login-form').style.display = 'block';
+  async function saveCurrentUser(partial) {
+    if (!S.uid) return;
+    await setDoc(doc(db, 'users', S.uid), partial, { merge: true });
   }
 
-  function auth() {
+  function showMain(userDoc, firebaseUser) {
+    S.uid = firebaseUser.uid;
+    S.user = userDoc.username;
+    S.email = firebaseUser.email || userDoc.email || '';
+    S.movies = Array.isArray(userDoc.movies) ? userDoc.movies : [];
+    S.friends = Array.isArray(userDoc.friends) ? userDoc.friends : [];
+    $('nav-u').textContent = S.user;
+    $('screen-auth').classList.remove('active');
+    $('screen-main').classList.add('active');
+    renderList();
+    renderFriends();
+    renderSettings();
+  }
+
+  function showAuth() {
+    S.user = null;
+    S.uid = null;
+    S.email = null;
+    S.movies = [];
+    S.friends = [];
+    $('screen-main').classList.remove('active');
+    $('screen-auth').classList.add('active');
+  }
+
+  async function authAction() {
+    if (!hasFirebaseConfig) return;
     if (S.mode === 'login') {
-      const u = document.getElementById('au').value.trim();
-      const p = document.getElementById('ap').value;
-      const err = document.getElementById('aerr');
-      if (!u||!p) { err.textContent='Fill in all fields.'; return; }
-      if (!DB.exists(u)) { err.textContent='No account found. Create one first.'; return; }
-      if (!DB.checkPw(u,p)) { err.textContent='Incorrect password.'; return; }
-      loginSuccess(u);
-    } else {
-      const u = document.getElementById('su').value.trim();
-      const e = document.getElementById('se').value.trim();
-      const p = document.getElementById('sp').value;
-      const err = document.getElementById('serr');
-      if (!u||!e||!p) { err.textContent='Fill in all fields.'; return; }
-      if (!/\S+@\S+\.\S+/.test(e)) { err.textContent='Enter a valid email.'; return; }
-      if (DB.exists(u)) { err.textContent='Username already taken.'; return; }
-      const d = DB.get(); d.u[u]=[]; d.p[u]=p; d.e[u]=e; d.f[u]=[]; DB.save(d);
-      loginSuccess(u);
+      const email = $('login-email').value.trim();
+      const password = $('login-password').value;
+      const err = $('aerr');
+      err.textContent = '';
+      if (!email || !password) {
+        err.textContent = 'Fill in all fields.';
+        return;
+      }
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (e) {
+        err.textContent = friendlyAuthError(e);
+      }
+      return;
+    }
+
+    const username = $('signup-username').value.trim();
+    const email = $('signup-email').value.trim();
+    const password = $('signup-password').value;
+    const err = $('serr');
+    err.textContent = '';
+
+    if (!username || !email || !password) {
+      err.textContent = 'Fill in all fields.';
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      err.textContent = 'Enter a valid email.';
+      return;
+    }
+    if (username.length < 3) {
+      err.textContent = 'Username must be at least 3 characters.';
+      return;
+    }
+
+    try {
+      const existing = await getUserByUsername(username);
+      if (existing) {
+        err.textContent = 'Username already taken.';
+        return;
+      }
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        username,
+        usernameLower: username.toLowerCase(),
+        email,
+        movies: [],
+        friends: [],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      err.textContent = friendlyAuthError(e);
     }
   }
+  window.auth = authAction;
 
-  function loginSuccess(u) {
-    S.user = u;
-    document.getElementById('nav-u').textContent = u;
-    document.getElementById('screen-auth').classList.remove('active');
-    document.getElementById('screen-main').classList.add('active');
-    renderList(); renderFriends(); renderSettings();
-  }
-
-  function logout() {
-    S.user = null;
-    document.getElementById('screen-main').classList.remove('active');
-    document.getElementById('screen-auth').classList.add('active');
-    document.getElementById('au').value = '';
-    document.getElementById('ap').value = '';
+  function friendlyAuthError(error) {
+    const code = error?.code || '';
+    if (code.includes('invalid-credential')) return 'Incorrect email or password.';
+    if (code.includes('email-already-in-use')) return 'That email is already being used.';
+    if (code.includes('weak-password')) return 'Password should be at least 6 characters.';
+    if (code.includes('invalid-email')) return 'Enter a valid email.';
+    if (code.includes('too-many-requests')) return 'Too many attempts. Try again later.';
+    if (code.includes('requires-recent-login')) return 'Sign out and sign back in, then try again.';
+    return 'Something went wrong. Try again.';
   }
 
   async function sendRecovery() {
-    const u = document.getElementById('fu').value.trim();
-    const e = document.getElementById('fe').value.trim();
-    const err = document.getElementById('ferr2');
-    const succ = document.getElementById('fsuccess');
-    const btn = document.getElementById('forgot-btn');
-    err.textContent = ''; succ.textContent = '';
-    if (!u||!e) { err.textContent='Fill in both fields.'; return; }
-    if (!DB.exists(u)) { err.textContent='No account with that username.'; return; }
-    const storedEmail = DB.email(u);
-    if (!storedEmail || storedEmail.toLowerCase() !== e.toLowerCase()) { err.textContent='Email does not match our records.'; return; }
-    const d = DB.get();
-    const pw = d.p[u];
-    btn.textContent = 'Sending...';
-    btn.disabled = true;
-    try {
-      await emailjs.send('service_ywbrqna', 'template_eoeg947', {
-        to_name: u,
-        to_email: e,
-        password: pw
-      });
-      succ.textContent = 'Recovery email sent! Check your inbox.';
-    } catch(err2) {
-      err.textContent = 'Failed to send email. Try again.';
+    if (!hasFirebaseConfig) return;
+    const email = $('login-email').value.trim();
+    const err = $('aerr');
+    err.textContent = '';
+    if (!email) {
+      err.textContent = 'Enter your email first, then tap Forgot password.';
+      return;
     }
-    btn.textContent = 'Send recovery email';
-    btn.disabled = false;
+    try {
+      await sendPasswordResetEmail(auth, email);
+      err.style.color = 'var(--green)';
+      err.textContent = 'Password reset email sent.';
+      setTimeout(() => { err.style.color = ''; }, 2500);
+    } catch (e) {
+      err.textContent = friendlyAuthError(e);
+    }
   }
+  window.sendRecovery = sendRecovery;
+
+  async function logout() {
+    if (!auth) return;
+    await signOut(auth);
+  }
+  window.logout = logout;
 
   function goTab(t, btn) {
     document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
     document.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
-    document.getElementById('tab-'+t).classList.add('active');
+    $('tab-' + t).classList.add('active');
     btn.classList.add('active');
     if (t === 'settings') renderSettings();
   }
+  window.goTab = goTab;
 
   async function doSearch() {
-    const q = document.getElementById('sq').value.trim();
+    const q = $('sq').value.trim();
     if (!q) return;
-    const status = document.getElementById('sstatus');
-    const container = document.getElementById('sresults');
-    status.textContent = 'Searching...';
-    container.innerHTML = '';
-    S.results=[]; S.selected=null;
+    $('sstatus').textContent = 'Searching...';
+    $('sresults').innerHTML = '';
+    S.results = [];
+    S.selected = null;
     try {
       const res = await fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(q)}&type=movie&apikey=trilogy`);
       const data = await res.json();
-      if (data.Response==='True' && data.Search) {
-        S.results = data.Search.slice(0,7);
-        status.textContent = '';
-        container.innerHTML = S.results.map((m,i) => {
-          const img = m.Poster && m.Poster!=='N/A'
+      if (data.Response === 'True' && data.Search) {
+        S.results = data.Search.slice(0, 7);
+        $('sstatus').textContent = '';
+        $('sresults').innerHTML = S.results.map((m, i) => {
+          const img = m.Poster && m.Poster !== 'N/A'
             ? `<img src="${m.Poster}" onerror="this.outerHTML='<div class=ri-placeholder>🎬</div>'" />`
             : `<div class="ri-placeholder">🎬</div>`;
-          return `<div class="result-item" id="ri${i}" onclick="selResult(${i})">${img}<div><div class="ri-title">${m.Title}</div><div class="ri-year">${m.Year}</div></div></div>`;
+          return `<div class="result-item" id="ri${i}" onclick="selResult(${i})">${img}<div><div class="ri-title">${escapeHtml(m.Title)}</div><div class="ri-year">${escapeHtml(m.Year)}</div></div></div>`;
         }).join('');
       } else {
-        status.textContent = data.Error || 'No results. Try manual entry.';
+        $('sstatus').textContent = data.Error || 'No results. Try manual entry.';
       }
-    } catch(e) {
-      status.textContent = 'Search unavailable — use manual entry below.';
+    } catch {
+      $('sstatus').textContent = 'Search unavailable — use manual entry below.';
     }
   }
+  window.doSearch = doSearch;
 
   function selResult(i) {
     S.selected = S.results[i];
-    document.querySelectorAll('.result-item').forEach((el,j) => el.classList.toggle('sel', i===j));
+    document.querySelectorAll('.result-item').forEach((el, j) => el.classList.toggle('sel', i === j));
   }
+  window.selResult = selResult;
 
   function toggleManual() {
     S.manual = !S.manual;
-    document.getElementById('manual-mode').style.display  = S.manual ? 'block' : 'none';
-    document.getElementById('search-mode').style.display  = S.manual ? 'none' : 'block';
-    document.getElementById('manual-link').textContent = S.manual ? 'Search instead' : 'Enter manually instead';
+    $('manual-mode').style.display = S.manual ? 'block' : 'none';
+    $('search-mode').style.display = S.manual ? 'none' : 'block';
+    $('manual-link').textContent = S.manual ? 'Search instead' : 'Enter manually instead';
     S.selected = null;
   }
+  window.toggleManual = toggleManual;
 
   function updateR() {
-    document.getElementById('rnum').textContent = parseFloat(document.getElementById('rslider').value).toFixed(1);
+    $('rnum').textContent = parseFloat($('rslider').value).toFixed(1);
   }
+  window.updateR = updateR;
 
-  function addMovie() {
-    const rating = parseFloat(document.getElementById('rslider').value);
+  async function addMovie() {
+    if (!S.uid) return;
+    const rating = parseFloat($('rslider').value);
     let movie;
     if (S.manual) {
-      const t = document.getElementById('mt').value.trim();
-      const y = document.getElementById('my').value.trim();
+      const t = $('mt').value.trim();
+      const y = $('my').value.trim();
       if (!t) return;
-      movie = { title:t, year:y, poster:null };
+      movie = { title: t, year: y, poster: null };
     } else {
       if (!S.selected) return;
       const m = S.selected;
-      movie = { title:m.Title, year:m.Year, poster:(m.Poster&&m.Poster!=='N/A') ? m.Poster : null };
+      movie = { title: m.Title, year: m.Year, poster: (m.Poster && m.Poster !== 'N/A') ? m.Poster : null };
     }
-    const movies = DB.movies(S.user);
-    movies.push({ ...movie, rating, id:Date.now() });
-    movies.sort((a,b) => b.rating - a.rating);
-    DB.saveMovies(S.user, movies);
+    const movies = [...S.movies, { ...movie, rating, id: crypto.randomUUID() }].sort((a, b) => b.rating - a.rating);
+    await saveCurrentUser({ movies, updatedAt: serverTimestamp() });
+    S.movies = movies;
     S.selected = null;
-    document.getElementById('sq').value = '';
-    document.getElementById('sresults').innerHTML = '';
-    document.getElementById('sstatus').textContent = '';
-    if (S.manual) { document.getElementById('mt').value=''; document.getElementById('my').value=''; }
+    $('sq').value = '';
+    $('sresults').innerHTML = '';
+    $('sstatus').textContent = '';
+    if (S.manual) { $('mt').value = ''; $('my').value = ''; }
     renderList();
+    renderSettings();
   }
+  window.addMovie = addMovie;
 
-  function delMovie(id) {
-    DB.saveMovies(S.user, DB.movies(S.user).filter(m => m.id !== id));
+  async function delMovie(id) {
+    const movies = S.movies.filter(m => m.id !== id);
+    await saveCurrentUser({ movies, updatedAt: serverTimestamp() });
+    S.movies = movies;
     renderList();
+    renderSettings();
   }
+  window.delMovie = delMovie;
 
   function stars(r) {
-    if (r>=9) return '⭐⭐⭐⭐⭐';
-    if (r>=8) return '⭐⭐⭐⭐';
-    if (r>=6.5) return '⭐⭐⭐';
-    if (r>=5) return '⭐⭐';
+    if (r >= 9) return '⭐⭐⭐⭐⭐';
+    if (r >= 8) return '⭐⭐⭐⭐';
+    if (r >= 6.5) return '⭐⭐⭐';
+    if (r >= 5) return '⭐⭐';
     return '⭐';
   }
 
   function renderList() {
-    const movies = DB.movies(S.user);
-    const top = movies.slice(0,3);
-    document.getElementById('top3').innerHTML = top.length ? top.map((m,i) => {
+    const movies = [...S.movies].sort((a, b) => b.rating - a.rating);
+    const top = movies.slice(0, 3);
+    $('top3').innerHTML = top.length ? top.map((m, i) => {
       const img = m.poster
         ? `<img class="banner-img" src="${m.poster}" onerror="this.outerHTML='<div class=banner-placeholder>🎬</div>'" />`
         : `<div class="banner-placeholder">🎬</div>`;
       return `<div class="banner-card">${img}
-        <div class="banner-rank">#${i+1}</div>
+        <div class="banner-rank">#${i + 1}</div>
         <div class="banner-info">
-          <div class="banner-title">${m.title}</div>
+          <div class="banner-title">${escapeHtml(m.title)}</div>
           <div class="banner-bottom">
             <span class="banner-score">${m.rating.toFixed(1)}</span>
             <span class="banner-stars">${stars(m.rating)}</span>
@@ -572,104 +629,172 @@
       </div>`;
     }).join('') : '<div class="empty" style="grid-column:1/-1;padding:1.5rem 0;">Rate some movies to see your top 3 here!</div>';
 
-    document.getElementById('mlist').innerHTML = movies.length ? movies.map((m,i) => {
+    $('mlist').innerHTML = movies.length ? movies.map((m, i) => {
       const thumb = m.poster
         ? `<div class="movie-thumb"><img src="${m.poster}" onerror="this.parentElement.innerHTML='🎬'" /></div>`
         : `<div class="movie-thumb">🎬</div>`;
-      const s = i<3 ? `<span style="font-size:11px;margin-left:6px;">${stars(m.rating)}</span>` : '';
+      const s = i < 3 ? `<span style="font-size:11px;margin-left:6px;">${stars(m.rating)}</span>` : '';
       return `<div class="movie-row">
-        <div class="movie-num">${i+1}</div>
+        <div class="movie-num">${i + 1}</div>
         ${thumb}
         <div class="movie-info">
-          <div class="movie-name">${m.title}${s}</div>
-          <div class="movie-year">${m.year||''}</div>
+          <div class="movie-name">${escapeHtml(m.title)}${s}</div>
+          <div class="movie-year">${escapeHtml(m.year || '')}</div>
         </div>
         <div class="score-badge">${m.rating.toFixed(1)}</div>
-        <button class="del-btn" onclick="delMovie(${m.id})" title="Remove">✕</button>
+        <button class="del-btn" onclick="delMovie('${m.id}')" title="Remove">✕</button>
       </div>`;
     }).join('') : '<div class="empty">No films yet — add one above!</div>';
   }
 
-  function addFriend() {
-    const u = document.getElementById('fi').value.trim();
-    const err = document.getElementById('friend-err');
-    if (!u) return;
-    if (u === S.user) { err.textContent="That's you!"; return; }
-    if (!DB.exists(u)) { err.textContent='No account with that username found.'; return; }
-    const f = DB.friends(S.user);
-    if (f.includes(u)) { err.textContent='Already added!'; return; }
-    f.push(u); DB.saveFriends(S.user, f);
-    document.getElementById('fi').value = ''; err.textContent = '';
+  async function addFriend() {
+    const username = $('fi').value.trim();
+    const err = $('friend-err');
+    err.textContent = '';
+    if (!username) return;
+    if (username.toLowerCase() === S.user.toLowerCase()) {
+      err.textContent = "That's you!";
+      return;
+    }
+    const friend = await getUserByUsername(username);
+    if (!friend) {
+      err.textContent = 'No account with that username found.';
+      return;
+    }
+    if (S.friends.some(f => f.uid === friend.id)) {
+      err.textContent = 'Already added!';
+      return;
+    }
+    const friends = [...S.friends, { uid: friend.id, username: friend.username }];
+    await saveCurrentUser({ friends, updatedAt: serverTimestamp() });
+    S.friends = friends;
+    $('fi').value = '';
     renderFriends();
   }
+  window.addFriend = addFriend;
 
   function renderFriends() {
-    const friends = DB.friends(S.user);
-    document.getElementById('flist').innerHTML = friends.length ? friends.map(f => {
-      const c = DB.movies(f).length;
-      return `<div class="friend-card ${S.friendSel===f?'active':''}" onclick="viewFriend('${f}')">
-        <div class="f-avatar">${f.slice(0,2).toUpperCase()}</div>
-        <div><div class="f-name">${f}</div><div class="f-count">${c} film${c!==1?'s':''}</div></div>
+    $('flist').innerHTML = S.friends.length ? S.friends.map(f => {
+      return `<div class="friend-card ${S.friendSel === f.uid ? 'active' : ''}" onclick="viewFriend('${f.uid}')">
+        <div class="f-avatar">${escapeHtml(f.username.slice(0, 2).toUpperCase())}</div>
+        <div><div class="f-name">${escapeHtml(f.username)}</div><div class="f-count">Friend</div></div>
       </div>`;
     }).join('') : '<div class="empty" style="padding:1rem 0;text-align:left;">No friends yet.</div>';
   }
 
-  function viewFriend(u) {
-    S.friendSel = u; renderFriends();
-    const movies = DB.movies(u);
-    const top = movies.slice(0,3);
-    const topHtml = top.length ? `<div class="top3" style="margin-bottom:1.5rem;">${top.map((m,i) => {
+  async function viewFriend(uid) {
+    S.friendSel = uid;
+    renderFriends();
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (!snap.exists()) {
+      $('fview').innerHTML = '<div class="empty">Friend not found.</div>';
+      return;
+    }
+    const friend = snap.data();
+    const movies = Array.isArray(friend.movies) ? [...friend.movies].sort((a, b) => b.rating - a.rating) : [];
+    const top = movies.slice(0, 3);
+    const topHtml = top.length ? `<div class="top3" style="margin-bottom:1.5rem;">${top.map((m, i) => {
       const img = m.poster
         ? `<img class="banner-img" src="${m.poster}" onerror="this.outerHTML='<div class=banner-placeholder>🎬</div>'" />`
         : `<div class="banner-placeholder">🎬</div>`;
-      return `<div class="banner-card">${img}<div class="banner-rank">#${i+1}</div><div class="banner-info"><div class="banner-title">${m.title}</div><div class="banner-bottom"><span class="banner-score">${m.rating.toFixed(1)}</span><span class="banner-stars">${stars(m.rating)}</span></div></div></div>`;
+      return `<div class="banner-card">${img}<div class="banner-rank">#${i + 1}</div><div class="banner-info"><div class="banner-title">${escapeHtml(m.title)}</div><div class="banner-bottom"><span class="banner-score">${m.rating.toFixed(1)}</span><span class="banner-stars">${stars(m.rating)}</span></div></div></div>`;
     }).join('')}</div>` : '';
-    const listHtml = movies.length ? `<div class="movie-list">${movies.map((m,i) => {
+    const listHtml = movies.length ? `<div class="movie-list">${movies.map((m, i) => {
       const thumb = m.poster ? `<div class="movie-thumb"><img src="${m.poster}" onerror="this.parentElement.innerHTML='🎬'" /></div>` : `<div class="movie-thumb">🎬</div>`;
-      const s = i<3 ? `<span style="font-size:11px;margin-left:6px;">${stars(m.rating)}</span>` : '';
-      return `<div class="movie-row"><div class="movie-num">${i+1}</div>${thumb}<div class="movie-info"><div class="movie-name">${m.title}${s}</div><div class="movie-year">${m.year||''}</div></div><div class="score-badge">${m.rating.toFixed(1)}</div></div>`;
+      const s = i < 3 ? `<span style="font-size:11px;margin-left:6px;">${stars(m.rating)}</span>` : '';
+      return `<div class="movie-row"><div class="movie-num">${i + 1}</div>${thumb}<div class="movie-info"><div class="movie-name">${escapeHtml(m.title)}${s}</div><div class="movie-year">${escapeHtml(m.year || '')}</div></div><div class="score-badge">${m.rating.toFixed(1)}</div></div>`;
     }).join('')}</div>` : '<div class="empty">No films rated yet.</div>';
-    document.getElementById('fview').innerHTML = `<div class="section-title">${u}'s list</div>${topHtml}${listHtml}`;
+    $('fview').innerHTML = `<div class="section-title">${escapeHtml(friend.username)}'s list</div>${topHtml}${listHtml}`;
   }
+  window.viewFriend = viewFriend;
 
   function renderSettings() {
     if (!S.user) return;
-    document.getElementById('s-username').textContent = S.user;
-    document.getElementById('s-email').textContent    = DB.email(S.user) || '—';
-    document.getElementById('s-count').textContent    = DB.movies(S.user).length;
-    document.getElementById('pw-err').textContent     = '';
-    document.getElementById('pw-success').textContent = '';
-    document.getElementById('s-cur-pw').value  = '';
-    document.getElementById('s-new-pw').value  = '';
-    document.getElementById('s-conf-pw').value = '';
+    $('s-username').textContent = S.user;
+    $('s-email').textContent = S.email || '—';
+    $('s-count').textContent = S.movies.length;
+    $('pw-err').textContent = '';
+    $('pw-success').textContent = '';
+    $('s-new-pw').value = '';
+    $('s-conf-pw').value = '';
   }
 
-  function changePassword() {
-    const cur  = document.getElementById('s-cur-pw').value;
-    const nw   = document.getElementById('s-new-pw').value;
-    const conf = document.getElementById('s-conf-pw').value;
-    const err  = document.getElementById('pw-err');
-    const succ = document.getElementById('pw-success');
-    err.textContent = ''; succ.textContent = '';
-    if (!cur||!nw||!conf) { err.textContent='Fill in all fields.'; return; }
-    if (!DB.checkPw(S.user, cur)) { err.textContent='Current password is incorrect.'; return; }
-    if (nw !== conf) { err.textContent='New passwords do not match.'; return; }
-    if (nw.length < 4) { err.textContent='Password must be at least 4 characters.'; return; }
-    DB.setPw(S.user, nw);
-    succ.textContent = 'Password updated!';
-    document.getElementById('s-cur-pw').value  = '';
-    document.getElementById('s-new-pw').value  = '';
-    document.getElementById('s-conf-pw').value = '';
+  async function changePasswordAction() {
+    const nw = $('s-new-pw').value;
+    const conf = $('s-conf-pw').value;
+    const err = $('pw-err');
+    const succ = $('pw-success');
+    err.textContent = '';
+    succ.textContent = '';
+    if (!nw || !conf) {
+      err.textContent = 'Fill in both fields.';
+      return;
+    }
+    if (nw !== conf) {
+      err.textContent = 'New passwords do not match.';
+      return;
+    }
+    if (nw.length < 6) {
+      err.textContent = 'Password must be at least 6 characters.';
+      return;
+    }
+    try {
+      await updatePassword(auth.currentUser, nw);
+      succ.textContent = 'Password updated!';
+      $('s-new-pw').value = '';
+      $('s-conf-pw').value = '';
+    } catch (e) {
+      err.textContent = friendlyAuthError(e);
+    }
   }
+  window.changePassword = changePasswordAction;
 
-  function openModal()  { document.getElementById('reset-modal').classList.add('open'); }
-  function closeModal() { document.getElementById('reset-modal').classList.remove('open'); }
+  function openModal() { $('reset-modal').classList.add('open'); }
+  function closeModal() { $('reset-modal').classList.remove('open'); }
+  window.openModal = openModal;
+  window.closeModal = closeModal;
 
-  function confirmReset() {
-    DB.saveMovies(S.user, []);
+  async function confirmReset() {
+    await saveCurrentUser({ movies: [], updatedAt: serverTimestamp() });
+    S.movies = [];
     closeModal();
     renderList();
     renderSettings();
+  }
+  window.confirmReset = confirmReset;
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  if (hasFirebaseConfig) {
+    onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        showAuth();
+        return;
+      }
+      const userDoc = await loadCurrentUser(firebaseUser.uid);
+      if (!userDoc) {
+        await setDoc(doc(db, 'users', firebaseUser.uid), {
+          username: firebaseUser.email?.split('@')[0] || 'user',
+          usernameLower: (firebaseUser.email?.split('@')[0] || 'user').toLowerCase(),
+          email: firebaseUser.email || '',
+          movies: [],
+          friends: [],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+        const repaired = await loadCurrentUser(firebaseUser.uid);
+        showMain(repaired, firebaseUser);
+        return;
+      }
+      showMain(userDoc, firebaseUser);
+    });
   }
 
   updateR();
