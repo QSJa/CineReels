@@ -83,7 +83,6 @@
   .banner-title { font-size: 13px; font-weight: 600; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .banner-bottom { display: flex; align-items: center; justify-content: space-between; }
   .banner-score { font-size: 22px; font-weight: 700; color: var(--accent); line-height: 1; }
-  .banner-stars { font-size: 11px; }
   .movie-list { display: flex; flex-direction: column; gap: 8px; }
   .movie-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; transition: border-color 0.15s; }
   .movie-row:hover { border-color: var(--border2); }
@@ -171,13 +170,13 @@
         <div class="field"><label>Email</label><input id="login-email" type="email" placeholder="you@email.com" /></div>
         <div class="field"><label>Password</label>
           <div class="pw-wrap">
-            <input id="login-password" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')auth()" />
+            <input id="login-password" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authAction()" />
             <button class="pw-eye" type="button" onclick="toggleEye('login-password',this)">👁</button>
           </div>
         </div>
         <div class="err" id="aerr"></div>
-        <button class="btn-primary" onclick="auth()">Sign in</button>
-        <button class="link-btn" onclick="sendRecovery()">Forgot password?</button>
+        <button class="btn-primary" onclick="authAction()">Sign in</button>
+        <button class="link-btn" onclick="showForgot()">Forgot password?</button>
       </div>
 
       <div id="signup-form" style="display:none;">
@@ -187,12 +186,12 @@
         <div class="field"><label>Email</label><input id="signup-email" type="email" placeholder="you@email.com" /></div>
         <div class="field"><label>Password</label>
           <div class="pw-wrap">
-            <input id="signup-password" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')auth()" />
+            <input id="signup-password" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')authAction()" />
             <button class="pw-eye" type="button" onclick="toggleEye('signup-password',this)">👁</button>
           </div>
         </div>
         <div class="err" id="serr"></div>
-        <button class="btn-primary" onclick="auth()">Create account</button>
+        <button class="btn-primary" onclick="authAction()">Create account</button>
         <div class="tiny-note">Usernames are public and unique. Emails and passwords are handled by Firebase Auth.</div>
       </div>
     </div>
@@ -326,7 +325,6 @@
     updateDoc,
     onSnapshot,
     deleteDoc,
-    documentId,
     runTransaction
   } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
@@ -337,8 +335,7 @@
     storageBucket: "cinereels-2657d.firebasestorage.app",
     messagingSenderId: "222351580051",
     appId: "1:222351580051:web:e5d36c802dae4dabc06666"
-};
-
+  };
 
   const hasFirebaseConfig = Object.values(firebaseConfig).every(v => !String(v).startsWith('PASTE_'));
   let app, auth, db;
@@ -575,15 +572,18 @@
 
   async function authAction() {
     if (!hasFirebaseConfig) return;
+
     if (S.mode === 'login') {
       const email = $('login-email').value.trim();
       const password = $('login-password').value;
       const err = $('aerr');
       err.textContent = '';
+
       if (!email || !password) {
         err.textContent = 'Fill in all fields.';
         return;
       }
+
       try {
         await signInWithEmailAndPassword(auth, email, password);
       } catch (e) {
@@ -593,58 +593,59 @@
     }
 
     const firstName = $('signup-first-name').value.trim();
-const lastName = $('signup-last-name').value.trim();
-const username = $('signup-username').value.trim();
-const email = $('signup-email').value.trim();
-const password = $('signup-password').value;
-const err = $('serr');
-err.textContent = '';
+    const lastName = $('signup-last-name').value.trim();
+    const username = $('signup-username').value.trim();
+    const email = $('signup-email').value.trim();
+    const password = $('signup-password').value;
+    const err = $('serr');
+    err.textContent = '';
 
-if (!firstName || !lastName || !username || !email || !password) {
-  err.textContent = 'Fill in all fields.';
-  return;
-}
-if (!/^\S+@\S+\.\S+$/.test(email)) {
-  err.textContent = 'Enter a valid email.';
-  return;
-}
-
-const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-
-if (!usernameRegex.test(username)) {
-  err.textContent =
-    'Username must be 3–20 characters and only contain letters, numbers, or underscores.';
-  return;
-}
-
-const usernameLower = username.toLowerCase();
-try {
-  const cred = await createUserWithEmailAndPassword(auth, email, password);
-  try {
-    await reserveUsername(usernameLower, cred.user.uid, username);
-  } catch (e) {
-    if (e?.message === 'username-taken') {
-      await signOut(auth);
-      err.textContent = 'Username already taken.';
+    if (!firstName || !lastName || !username || !email || !password) {
+      err.textContent = 'Fill in all fields.';
       return;
     }
-    throw e;
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      err.textContent = 'Enter a valid email.';
+      return;
+    }
+
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    if (!usernameRegex.test(username)) {
+      err.textContent = 'Username must be 3–20 characters and only contain letters, numbers, or underscores.';
+      return;
+    }
+
+    const usernameLower = username.toLowerCase();
+
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+      try {
+        await reserveUsername(usernameLower, cred.user.uid, username);
+      } catch (e) {
+        if (e?.message === 'username-taken') {
+          await signOut(auth);
+          err.textContent = 'Username already taken.';
+          return;
+        }
+        throw e;
+      }
+
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        username,
+        usernameLower,
+        firstName,
+        lastName,
+        displayName: [firstName, lastName].filter(Boolean).join(' '),
+        email,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (e) {
+      err.textContent = friendlyAuthError(e);
+    }
   }
-  await setDoc(doc(db, 'users', cred.user.uid), {
-    username,
-    usernameLower,
-    firstName,
-    lastName,
-    displayName: [firstName, lastName].filter(Boolean).join(' '),
-    email,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-} catch (e) {
-  err.textContent = friendlyAuthError(e);
-}
-}
-window.authAction = authAction;
+  window.authAction = authAction;
 
   function friendlyAuthError(e) {
     const code = e?.code || '';
@@ -1004,7 +1005,7 @@ window.authAction = authAction;
       S.lastName = lastName;
       S.displayName = [firstName, lastName].filter(Boolean).join(' ');
       succ.textContent = 'Profile updated!';
-    } catch (e) {
+    } catch {
       err.textContent = 'Could not save profile.';
     }
   }
