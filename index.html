@@ -120,6 +120,8 @@
   .info-value { font-size: 13px; font-weight: 500; }
   .settings-field { margin-bottom: 1rem; }
   .settings-field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .settings-field input:not(.pw-wrap input) { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 13px; outline: none; transition: border-color 0.2s; }
+  .settings-field input:not(.pw-wrap input):focus { border-color: var(--accent); }
   .settings-field .pw-wrap input { background: var(--surface2); }
   .btn-save { background: var(--accent); color: #111; border: none; border-radius: 8px; padding: 10px 22px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
   .btn-save:hover { background: var(--accent2); }
@@ -265,6 +267,11 @@
           <div class="info-row"><span class="info-label">Username</span><span class="info-value" id="s-username">—</span></div>
           <div class="info-row"><span class="info-label">Email</span><span class="info-value" id="s-email">—</span></div>
           <div class="info-row"><span class="info-label">Movies rated</span><span class="info-value" id="s-count">—</span></div>
+          <div class="settings-field" style="margin-top:1rem;"><label>First name</label><input id="s-first-name" type="text" placeholder="First name" /></div>
+          <div class="settings-field"><label>Last name</label><input id="s-last-name" type="text" placeholder="Last name" /></div>
+          <div class="err" id="profile-err"></div>
+          <div class="success-msg" id="profile-success"></div>
+          <button class="btn-save" onclick="saveProfile()">Save name</button>
         </div>
         <div class="settings-card">
           <div class="settings-card-title">Change password</div>
