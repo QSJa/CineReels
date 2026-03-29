@@ -179,6 +179,8 @@
       </div>
 
       <div id="signup-form" style="display:none;">
+        <div class="field"><label>First name</label><input id="signup-first-name" type="text" placeholder="e.g. Mia" /></div>
+        <div class="field"><label>Last name</label><input id="signup-last-name" type="text" placeholder="e.g. Chen" /></div>
         <div class="field"><label>Username</label><input id="signup-username" type="text" placeholder="e.g. filmfan42" /></div>
         <div class="field"><label>Email</label><input id="signup-email" type="email" placeholder="you@email.com" /></div>
         <div class="field"><label>Password</label>
@@ -249,7 +251,7 @@
             <button onclick="addFriend()">Add</button>
           </div>
           <div class="err" id="friend-err"></div>
-          <div class="hint">Friends now work across devices because they are stored in Firestore.</div>
+          <div class="hint">Search by username to send a friend request.</div>
         </div>
         <div id="fview"><div class="no-friend">Select a friend to view their list</div></div>
       </div>
@@ -330,6 +332,7 @@
     appId: "1:222351580051:web:e5d36c802dae4dabc06666"
 };
 
+
   const hasFirebaseConfig = Object.values(firebaseConfig).every(v => !String(v).startsWith('PASTE_'));
   let app, auth, db;
 
@@ -396,9 +399,31 @@
     await setDoc(doc(db, 'users', S.uid), partial, { merge: true });
   }
 
+  function fullNameFrom(docLike) {
+    const first = String(docLike?.firstName || '').trim();
+    const last = String(docLike?.lastName || '').trim();
+    return [first, last].filter(Boolean).join(' ');
+  }
+
+  function primaryNameFrom(docLike) {
+    return fullNameFrom(docLike) || docLike?.username || 'User';
+  }
+
+  function initialsFrom(docLike) {
+    const full = fullNameFrom(docLike);
+    if (full) {
+      const parts = full.split(/\s+/).filter(Boolean).slice(0, 2);
+      return parts.map(p => p[0]).join('').toUpperCase();
+    }
+    return String(docLike?.username || '?').slice(0, 2).toUpperCase();
+  }
+
   function showMain(userDoc, firebaseUser) {
     S.uid = firebaseUser.uid;
     S.user = userDoc.username;
+    S.firstName = userDoc.firstName || '';
+    S.lastName = userDoc.lastName || '';
+    S.displayName = primaryNameFrom(userDoc);
     S.email = firebaseUser.email || userDoc.email || '';
     S.movies = Array.isArray(userDoc.movies) ? userDoc.movies : [];
     S.friends = [];
@@ -429,7 +454,14 @@
       if (req.status === 'pending') {
         outgoing.push(req);
       } else if (req.status === 'accepted' && !seenFriends.has(req.recipientUid)) {
-        friends.push({ uid: req.recipientUid, username: req.recipientUsername || 'Friend' });
+        friends.push({
+          requestId: req.id,
+          uid: req.recipientUid,
+          username: req.recipientUsername || 'Friend',
+          firstName: req.recipientFirstName || '',
+          lastName: req.recipientLastName || '',
+          displayName: req.recipientDisplayName || ''
+        });
         seenFriends.add(req.recipientUid);
       }
     });
@@ -439,14 +471,23 @@
       if (req.status === 'pending') {
         incoming.push(req);
       } else if (req.status === 'accepted' && !seenFriends.has(req.senderUid)) {
-        friends.push({ uid: req.senderUid, username: req.senderUsername || 'Friend' });
+        friends.push({
+          requestId: req.id,
+          uid: req.senderUid,
+          username: req.senderUsername || 'Friend',
+          firstName: req.senderFirstName || '',
+          lastName: req.senderLastName || '',
+          displayName: req.senderDisplayName || ''
+        });
         seenFriends.add(req.senderUid);
       }
     });
 
     outgoing.sort((a, b) => (a.recipientUsername || '').localeCompare(b.recipientUsername || ''));
     incoming.sort((a, b) => (a.senderUsername || '').localeCompare(b.senderUsername || ''));
-    friends.sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+    friends.sort((a, b) => primaryNameFrom(a).localeCompare(primaryNameFrom(b)));
+
+    if (S.friendSel && !friends.some(f => f.uid === S.friendSel)) S.friendSel = null;
 
     S.outgoingRequests = outgoing;
     S.incomingRequests = incoming;
@@ -461,6 +502,9 @@
       if (!snap.exists()) return;
       const userDoc = snap.data();
       S.user = userDoc.username || S.user;
+      S.firstName = userDoc.firstName || '';
+      S.lastName = userDoc.lastName || '';
+      S.displayName = primaryNameFrom(userDoc);
       S.email = userDoc.email || S.email || '';
       S.movies = Array.isArray(userDoc.movies) ? userDoc.movies : [];
       $('nav-u').textContent = S.user;
@@ -497,6 +541,9 @@
     S.user = null;
     S.uid = null;
     S.email = null;
+    S.firstName = '';
+    S.lastName = '';
+    S.displayName = '';
     S.movies = [];
     S.friends = [];
     S.incomingRequests = [];
@@ -524,13 +571,15 @@
       return;
     }
 
+    const firstName = $('signup-first-name').value.trim();
+    const lastName = $('signup-last-name').value.trim();
     const username = $('signup-username').value.trim();
     const email = $('signup-email').value.trim();
     const password = $('signup-password').value;
     const err = $('serr');
     err.textContent = '';
 
-    if (!username || !email || !password) {
+    if (!firstName || !lastName || !username || !email || !password) {
       err.textContent = 'Fill in all fields.';
       return;
     }
@@ -548,6 +597,9 @@
       await setDoc(doc(db, 'users', cred.user.uid), {
         username,
         usernameLower: username.toLowerCase(),
+        firstName,
+        lastName,
+        displayName: [firstName, lastName].filter(Boolean).join(' '),
         email,
         movies: [],
         friends: [],
@@ -761,8 +813,14 @@
     await addDoc(collection(db, 'friendRequests'), {
       senderUid: S.uid,
       senderUsername: S.user,
+      senderFirstName: S.firstName || '',
+      senderLastName: S.lastName || '',
+      senderDisplayName: S.displayName || S.user,
       recipientUid: friend.id,
       recipientUsername: friend.username,
+      recipientFirstName: friend.firstName || '',
+      recipientLastName: friend.lastName || '',
+      recipientDisplayName: primaryNameFrom(friend),
       status: 'pending',
       createdAt: serverTimestamp()
     });
@@ -811,20 +869,41 @@
   }
   window.cancelFriendRequest = cancelFriendRequest;
 
+  async function removeFriend(requestId) {
+    await updateDoc(doc(db, 'friendRequests', requestId), {
+      status: 'removed',
+      respondedAt: serverTimestamp()
+    });
+    if (S.friendSel && !S.friends.some(f => f.requestId === requestId && f.uid === S.friendSel)) {
+      S.friendSel = null;
+    }
+    await refreshSocialData();
+    renderFriends();
+    if (!S.friends.some(f => f.uid === S.friendSel)) {
+      $('fview').innerHTML = '<div class="no-friend">Select a friend to view their list</div>';
+    }
+  }
+  window.removeFriend = removeFriend;
+
   function renderFriends() {
     const friendsHtml = S.friends.length ? S.friends.map(f => {
+      const primary = primaryNameFrom(f);
       return `<div class="friend-card ${S.friendSel === f.uid ? 'active' : ''}" onclick="viewFriend('${f.uid}')">
-        <div class="f-avatar">${escapeHtml(f.username.slice(0, 2).toUpperCase())}</div>
-        <div><div class="f-name">${escapeHtml(f.username)}</div><div class="f-count">Friend</div></div>
+        <div class="f-avatar">${escapeHtml(initialsFrom(f))}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="f-name">${escapeHtml(primary)}</div>
+          <div class="f-count">@${escapeHtml(f.username || '')}</div>
+        </div>
+        <button class="logout-btn" onclick="event.stopPropagation();removeFriend('${f.requestId}')">Remove</button>
       </div>`;
     }).join('') : '<div class="empty" style="padding:1rem 0;text-align:left;">No friends yet.</div>';
 
     const incomingHtml = S.incomingRequests.length ? S.incomingRequests.map(r => `
       <div class="friend-card">
-        <div class="f-avatar">${escapeHtml((r.senderUsername || '?').slice(0, 2).toUpperCase())}</div>
+        <div class="f-avatar">${escapeHtml(initialsFrom({ firstName: r.senderFirstName, lastName: r.senderLastName, username: r.senderUsername }))}</div>
         <div style="flex:1;min-width:0;">
-          <div class="f-name">${escapeHtml(r.senderUsername || 'Unknown')}</div>
-          <div class="f-count">Sent you a request</div>
+          <div class="f-name">${escapeHtml(r.senderDisplayName || r.senderUsername || 'Unknown')}</div>
+          <div class="f-count">@${escapeHtml(r.senderUsername || '')} · sent you a request</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
           <button class="logout-btn" onclick="event.stopPropagation();acceptFriendRequest('${r.id}')">Accept</button>
@@ -835,10 +914,10 @@
 
     const outgoingHtml = S.outgoingRequests.length ? S.outgoingRequests.map(r => `
       <div class="friend-card">
-        <div class="f-avatar">${escapeHtml((r.recipientUsername || '?').slice(0, 2).toUpperCase())}</div>
+        <div class="f-avatar">${escapeHtml(initialsFrom({ firstName: r.recipientFirstName, lastName: r.recipientLastName, username: r.recipientUsername }))}</div>
         <div style="flex:1;min-width:0;">
-          <div class="f-name">${escapeHtml(r.recipientUsername || 'Unknown')}</div>
-          <div class="f-count">Pending</div>
+          <div class="f-name">${escapeHtml(r.recipientDisplayName || r.recipientUsername || 'Unknown')}</div>
+          <div class="f-count">@${escapeHtml(r.recipientUsername || '')} · pending</div>
         </div>
         <button class="logout-btn" onclick="event.stopPropagation();cancelFriendRequest('${r.id}')">Cancel</button>
       </div>
@@ -876,7 +955,9 @@
       const s = '';
       return `<div class="movie-row"><div class="movie-num">${i + 1}</div>${thumb}<div class="movie-info"><div class="movie-name">${escapeHtml(m.title)}${s}</div><div class="movie-year">${escapeHtml(m.year || '')}</div></div><div class="score-badge">${m.rating.toFixed(1)}</div></div>`;
     }).join('')}</div>` : '<div class="empty">No films rated yet.</div>';
-    $('fview').innerHTML = `<div class="section-title">${escapeHtml(friend.username)}'s list</div>${topHtml}${listHtml}`;
+    const friendPrimary = primaryNameFrom(friend);
+    const friendSecondary = friend.username ? ` <span style="font-size:12px;color:var(--muted);font-weight:400;">@${escapeHtml(friend.username)}</span>` : '';
+    $('fview').innerHTML = `<div class="section-title">${escapeHtml(friendPrimary)}${friendSecondary}</div>${topHtml}${listHtml}`;
   }
   window.viewFriend = viewFriend;
 
@@ -885,11 +966,43 @@
     $('s-username').textContent = S.user;
     $('s-email').textContent = S.email || '—';
     $('s-count').textContent = S.movies.length;
+    $('s-first-name').value = S.firstName || '';
+    $('s-last-name').value = S.lastName || '';
+    $('profile-err').textContent = '';
+    $('profile-success').textContent = '';
     $('pw-err').textContent = '';
     $('pw-success').textContent = '';
     $('s-new-pw').value = '';
     $('s-conf-pw').value = '';
   }
+
+  async function saveProfile() {
+    const firstName = $('s-first-name').value.trim();
+    const lastName = $('s-last-name').value.trim();
+    const err = $('profile-err');
+    const succ = $('profile-success');
+    err.textContent = '';
+    succ.textContent = '';
+    if (!firstName || !lastName) {
+      err.textContent = 'Fill in both name fields.';
+      return;
+    }
+    try {
+      await saveCurrentUser({
+        firstName,
+        lastName,
+        displayName: [firstName, lastName].filter(Boolean).join(' '),
+        updatedAt: serverTimestamp()
+      });
+      S.firstName = firstName;
+      S.lastName = lastName;
+      S.displayName = [firstName, lastName].filter(Boolean).join(' ');
+      succ.textContent = 'Profile updated!';
+    } catch (e) {
+      err.textContent = 'Could not save profile.';
+    }
+  }
+  window.saveProfile = saveProfile;
 
   async function changePasswordAction() {
     const nw = $('s-new-pw').value;
@@ -955,6 +1068,9 @@
         await setDoc(doc(db, 'users', firebaseUser.uid), {
           username: firebaseUser.email?.split('@')[0] || 'user',
           usernameLower: (firebaseUser.email?.split('@')[0] || 'user').toLowerCase(),
+          firstName: '',
+          lastName: '',
+          displayName: '',
           email: firebaseUser.email || '',
           movies: [],
           friends: [],
